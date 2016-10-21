@@ -3,14 +3,14 @@ This is an upgrade of my last [FCM XMPP Connection Server](https://github.com/ca
 
 The new version has introduced new terminology, deprecated some older methods and enriched the library in general. The problem started when there is a no working example out there using the new version to build a XMPP CCS for FCM. In summary, the API changes from the 3.x to the 4.x version are:
 
-1. XMPPConnection is now an interface. Use either AbstractXMPPConnection or one of its subclasses as static type when declaring the connection.
+1. XMPPConnection is now an interface. Use either AbstractXMPPConnection or one of its subclasses (XMPPTCPConnection).
 2. XMPPConnection.addPacketListener is deprecated: use either addAsyncPacketListener or addSyncPacketListener.
 3. Packet became a deprecated interface. Use the new Stanza class.
 4. The Packet Extension term is now Extension Element.
   
 For more information you must read the following documentation: 
  
- * [The upgrade guide](https://github.com/igniterealtime/Smack/wiki/Smack-4.1-Readme-and-Upgrade-Guide)
+* [The upgrade guide](https://github.com/igniterealtime/Smack/wiki/Smack-4.1-Readme-and-Upgrade-Guide)
 * [New Smack Terminology](https://github.com/igniterealtime/Smack/wiki/New-Smack-Terminology)
 * [The Smack Javadoc](http://download.igniterealtime.org/smack/docs/latest/javadoc/)
 
@@ -29,7 +29,8 @@ I am Carlos Becerra - MSc. Softwware & Systems. You can contact me via:
 * [Twitter](https://twitter.com/CarlosBecerraRo)
 
 ##Thanks
-* To tell the truth. I was really worried looking for the right solution. Finally, I made a list of useful links (apart from the above documentation links).
+To tell the truth. I was really worried looking for the right solution. Finally, I made a list of useful links (apart from the above documentation links).
+
 * [gcm server](http://www.marothiatechs.com/2015/08/building-your-own-android-chat_18.html)
 * [stanza](http://www.programcreek.com/java-api-examples/index.php?api=org.jivesoftware.smack.packet.Stanza)
 * [a problem](https://community.igniterealtime.org/thread/59532)

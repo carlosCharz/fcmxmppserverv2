@@ -1,27 +1,6 @@
 package com.wedevol.xmpp.server;
 
-import org.jivesoftware.smack.ConnectionConfiguration;
-import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
-import org.jivesoftware.smack.ConnectionListener;
-import org.jivesoftware.smack.PacketInterceptor;
-import org.jivesoftware.smack.PacketListener;
-import org.jivesoftware.smack.XMPPConnection;
-import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.filter.PacketTypeFilter;
-import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.Packet;
-import org.jivesoftware.smack.packet.PacketExtension;
-import org.jivesoftware.smack.provider.PacketExtensionProvider;
-import org.jivesoftware.smack.provider.ProviderManager;
-import org.json.simple.JSONValue;
-import org.json.simple.parser.ParseException;
-import org.xmlpull.v1.XmlPullParser;
-
-import com.wedevol.xmpp.bean.CcsInMessage;
-import com.wedevol.xmpp.bean.CcsOutMessage;
-import com.wedevol.xmpp.service.PayloadProcessor;
-import com.wedevol.xmpp.util.Util;
-
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,18 +8,40 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLSocketFactory;
 
+import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
+import org.jivesoftware.smack.ConnectionListener;
+import org.jivesoftware.smack.ReconnectionManager;
+import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jivesoftware.smack.StanzaListener;
+import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.packet.Stanza;
+import org.jivesoftware.smack.provider.ExtensionElementProvider;
+import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smack.tcp.XMPPTCPConnection;
+import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.ParseException;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
+import com.wedevol.xmpp.bean.CcsInMessage;
+import com.wedevol.xmpp.bean.CcsOutMessage;
+import com.wedevol.xmpp.service.PayloadProcessor;
+import com.wedevol.xmpp.util.Util;
+
 /**
  * Sample Smack implementation of a client for FCM Cloud Connection Server. Most
  * of it has been taken more or less verbatim from Google's documentation:
  * https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref
  */
-public class CcsClient implements PacketListener {
+public class CcsClient implements StanzaListener {
 
 	public static final Logger logger = Logger.getLogger(CcsClient.class.getName());
 
 	private static CcsClient sInstance = null;
-	private XMPPConnection connection;
-	private ConnectionConfiguration config;
+	private XMPPTCPConnection connection;
 	private String mApiKey = null;
 	private String mProjectId = null;
 	private boolean mDebuggable = false;
@@ -72,14 +73,13 @@ public class CcsClient implements PacketListener {
 
 	private CcsClient() {
 		// Add GcmPacketExtension
-		ProviderManager.getInstance().addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
-				new PacketExtensionProvider() {
-
+		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
+				new ExtensionElementProvider<GcmPacketExtension>() {
 					@Override
-					public PacketExtension parseExtension(XmlPullParser parser) throws Exception {
+					public GcmPacketExtension parse(XmlPullParser parser, int initialDepth)
+							throws XmlPullParserException, IOException, SmackException {
 						String json = parser.nextText();
-						GcmPacketExtension packet = new GcmPacketExtension(json);
-						return packet;
+						return new GcmPacketExtension(json);
 					}
 				});
 	}
@@ -87,19 +87,30 @@ public class CcsClient implements PacketListener {
 	/**
 	 * Connects to FCM Cloud Connection Server using the supplied credentials
 	 */
-	public void connect() throws XMPPException {
-		config = new ConnectionConfiguration(Util.FCM_SERVER, Util.FCM_PORT);
-		config.setSecurityMode(SecurityMode.enabled);
-		config.setReconnectionAllowed(true);
-		config.setRosterLoadedAtLogin(false);
+	public void connect() throws XMPPException, SmackException, IOException {
+		XMPPTCPConnection.setUseStreamManagementResumptionDefault(true);
+		XMPPTCPConnection.setUseStreamManagementDefault(true);
+
+		XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
+		config.setServiceName("FCM XMPP Client Connection Server");
+		config.setHost(Util.FCM_SERVER);
+		config.setPort(Util.FCM_PORT);
+		config.setSecurityMode(SecurityMode.ifpossible);
 		config.setSendPresence(false);
 		config.setSocketFactory(SSLSocketFactory.getDefault());
 		// Launch a window with info about packets sent and received
 		config.setDebuggerEnabled(mDebuggable);
 
-		connection = new XMPPConnection(config);
+		// Create the connection
+		connection = new XMPPTCPConnection(config.build());
+
+		// Connect
 		connection.connect();
 
+		// Enable automatic reconnection
+		ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection();
+
+		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {
 
 			@Override
@@ -131,18 +142,26 @@ public class CcsClient implements PacketListener {
 				logger.log(Level.INFO, "Connection closed");
 				// TODO: handle the connection closed
 			}
+
+			@Override
+			public void authenticated(XMPPConnection arg0, boolean arg1) {
+				logger.log(Level.INFO, "User authenticated");
+				// TODO: handle the authentication
+			}
+
+			@Override
+			public void connected(XMPPConnection arg0) {
+				logger.log(Level.INFO, "Connection established");
+				// TODO: handle the connection
+			}
 		});
 
-		// Handle incoming packets (the class implements the PacketListener)
-		connection.addPacketListener(this, new PacketTypeFilter(Message.class));
+		// Handle incoming packets (the class implements the StanzaListener)
+		connection.addAsyncStanzaListener(this,
+				stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(new PacketInterceptor() {
-			@Override
-			public void interceptPacket(Packet packet) {
-				logger.log(Level.INFO, "Sent: {0}", packet.toXML());
-			}
-		}, new PacketTypeFilter(Message.class));
+		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()), stanza -> true);
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
@@ -153,7 +172,7 @@ public class CcsClient implements PacketListener {
 			try {
 				connect();
 				return;
-			} catch (XMPPException e) {
+			} catch (XMPPException | SmackException | IOException e) {
 				logger.log(Level.INFO, "Connecting again to FCM (manual reconnection)");
 				try {
 					Thread.sleep(1000);
@@ -169,10 +188,9 @@ public class CcsClient implements PacketListener {
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public void processPacket(Packet packet) {
+	public void processPacket(Stanza packet) {
 		logger.log(Level.INFO, "Received: " + packet.toXML());
-		Message incomingMessage = (Message) packet;
-		GcmPacketExtension gcmPacket = (GcmPacketExtension) incomingMessage.getExtension(Util.FCM_NAMESPACE);
+		GcmPacketExtension gcmPacket = (GcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
 		String json = gcmPacket.getJson();
 		try {
 			Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
@@ -316,8 +334,12 @@ public class CcsClient implements PacketListener {
 	 */
 	public void send(String jsonRequest) {
 		// TODO: Resend the message using exponential back-off!
-		Packet request = new GcmPacketExtension(jsonRequest).toPacket();
-		connection.sendPacket(request);
+		Stanza request = new GcmPacketExtension(jsonRequest).toPacket();
+		try {
+			connection.sendStanza(request);
+		} catch (NotConnectedException e) {
+			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
+		}
 	}
 
 	/**

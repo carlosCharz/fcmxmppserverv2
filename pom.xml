@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.wedevol</groupId>
-	<artifactId>FCMXMPPServer</artifactId>
+	<artifactId>xmppserver2</artifactId>
 	<version>0.0.1</version>
 	<packaging>jar</packaging>
 

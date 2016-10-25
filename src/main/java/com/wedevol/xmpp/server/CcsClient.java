@@ -16,9 +16,11 @@ import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smack.sm.predicates.ForEveryStanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.json.simple.JSONValue;
@@ -157,11 +159,20 @@ public class CcsClient implements StanzaListener {
 		});
 
 		// Handle incoming packets (the class implements the StanzaListener)
-		connection.addAsyncStanzaListener(this,
-				stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
+		connection.addAsyncStanzaListener(this, new StanzaFilter() {
+			@Override
+			public boolean accept(Stanza stanza) {
+				return stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE);
+			}
+		});
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()), stanza -> true);
+		connection.addPacketInterceptor(new StanzaListener() {
+			@Override
+			public void processPacket(Stanza stanza) throws NotConnectedException {
+				logger.log(Level.INFO, "Sent: {}", stanza.toXML());
+			}
+		}, ForEveryStanza.INSTANCE);
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);

@@ -23,6 +23,8 @@ import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smack.sm.predicates.ForEveryStanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.jivesoftware.smackx.ping.PingFailedListener;
+import org.jivesoftware.smackx.ping.PingManager;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
 import org.xmlpull.v1.XmlPullParser;
@@ -173,6 +175,17 @@ public class CcsClient implements StanzaListener {
 				logger.log(Level.INFO, "Sent: {}", stanza.toXML());
 			}
 		}, ForEveryStanza.INSTANCE);
+		
+		// Set the ping interval
+		final PingManager pingManager = PingManager.getInstanceFor(connection);
+		pingManager.setPingInterval(900);
+		pingManager.registerPingFailedListener(new PingFailedListener() {
+			@Override
+			public void pingFailed() {
+				logger.info("The ping failed, restarting the ping interval again ...");
+				pingManager.setPingInterval(900);
+			}
+		});
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);

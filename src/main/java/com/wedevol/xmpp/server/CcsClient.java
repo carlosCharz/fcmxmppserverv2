@@ -179,19 +179,7 @@ public class CcsClient implements StanzaListener {
 	}
 
 	public void reconnect() {
-		while (true) {
-			try {
-				connect();
-				return;
-			} catch (XMPPException | SmackException | IOException e) {
-				logger.log(Level.INFO, "Connecting again to FCM (manual reconnection)");
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
-				}
-			}
-		}
+		// Try to connect again using exponential back-off!
 	}
 
 	/**

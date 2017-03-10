@@ -39,8 +39,7 @@ public class EntryPoint {
 		ccsClient.send(jsonRequest);
 
 		while (true) {
-			// TODO: Improve this because the app closes itself after the
-			// execution of the connect method
+			// TODO: Improve this because the app closes itself after the execution of the connect method
 		}
 	}
 }

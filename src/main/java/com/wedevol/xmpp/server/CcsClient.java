@@ -178,12 +178,12 @@ public class CcsClient implements StanzaListener {
 		
 		// Set the ping interval
 		final PingManager pingManager = PingManager.getInstanceFor(connection);
-		pingManager.setPingInterval(900);
+		pingManager.setPingInterval(100);
 		pingManager.registerPingFailedListener(new PingFailedListener() {
 			@Override
 			public void pingFailed() {
 				logger.info("The ping failed, restarting the ping interval again ...");
-				pingManager.setPingInterval(900);
+				pingManager.setPingInterval(100);
 			}
 		});
 

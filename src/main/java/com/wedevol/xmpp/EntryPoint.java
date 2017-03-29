@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
@@ -18,6 +21,9 @@ import com.wedevol.xmpp.util.Util;
  * purposes
  */
 public class EntryPoint {
+	
+	public static final Logger logger = Logger.getLogger(EntryPoint.class.getName());
+	
 	public static void main(String[] args) throws SmackException, IOException {
 		final String fcmProjectSenderId = args[0];
 		final String fcmServerKey = args[1];
@@ -39,8 +45,11 @@ public class EntryPoint {
 		String jsonRequest = MessageHelper.createJsonOutMessage(message);
 		ccsClient.send(jsonRequest);
 
-		while (true) {
-			// TODO: Improve this because the app closes itself after the execution of the connect method
-		}
+		try {
+            CountDownLatch latch = new CountDownLatch(1);
+            latch.await();
+        } catch (InterruptedException e) {
+            logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);
+        }
 	}
 }

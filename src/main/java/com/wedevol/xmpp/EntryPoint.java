@@ -1,6 +1,7 @@
 package com.wedevol.xmpp;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,7 +27,7 @@ public class EntryPoint {
 
 		try {
 			ccsClient.connect();
-		} catch (XMPPException e) {
+		} catch (XMPPException | InterruptedException e) {
 			e.printStackTrace();
 		}
 

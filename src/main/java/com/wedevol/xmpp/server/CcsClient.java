@@ -8,14 +8,8 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
-import org.jivesoftware.smack.ConnectionListener;
-import org.jivesoftware.smack.ReconnectionManager;
-import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
-import org.jivesoftware.smack.StanzaListener;
-import org.jivesoftware.smack.XMPPConnection;
-import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.provider.ExtensionElementProvider;
@@ -23,7 +17,6 @@ import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smack.sm.predicates.ForEveryStanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
-import org.jivesoftware.smackx.ping.PingFailedListener;
 import org.jivesoftware.smackx.ping.PingManager;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
@@ -42,12 +35,11 @@ import com.wedevol.xmpp.util.Util;
  */
 public class CcsClient implements StanzaListener {
 
-	public static final Logger logger = Logger.getLogger(CcsClient.class.getName());
+	private static final Logger logger = Logger.getLogger(CcsClient.class.getName());
 
 	private static CcsClient sInstance = null;
 	private XMPPTCPConnection connection;
 	private String mApiKey = null;
-	private String mProjectId = null;
 	private boolean mDebuggable = false;
 	private String fcmServerUsername = null;
 
@@ -70,9 +62,8 @@ public class CcsClient implements StanzaListener {
 	private CcsClient(String projectId, String apiKey, boolean debuggable) {
 		this();
 		mApiKey = apiKey;
-		mProjectId = projectId;
 		mDebuggable = debuggable;
-		fcmServerUsername = mProjectId + "@" + Util.FCM_SERVER_CONNECTION;
+		fcmServerUsername = projectId + "@" + Util.FCM_SERVER_CONNECTION;
 	}
 
 	private CcsClient() {
@@ -91,15 +82,15 @@ public class CcsClient implements StanzaListener {
 	/**
 	 * Connects to FCM Cloud Connection Server using the supplied credentials
 	 */
-	public void connect() throws XMPPException, SmackException, IOException {
+	public void connect() throws XMPPException, SmackException, IOException, InterruptedException {
 		XMPPTCPConnection.setUseStreamManagementResumptionDefault(true);
 		XMPPTCPConnection.setUseStreamManagementDefault(true);
 
 		XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
-		config.setServiceName("FCM XMPP Client Connection Server");
+		config.setXmppDomain("FCM XMPP Client Connection Server");
 		config.setHost(Util.FCM_SERVER);
 		config.setPort(Util.FCM_PORT);
-		config.setSecurityMode(SecurityMode.ifpossible);
+		config.setSecurityMode(ConnectionConfiguration.SecurityMode.ifpossible);
 		config.setSendPresence(false);
 		config.setSocketFactory(SSLSocketFactory.getDefault());
 		// Launch a window with info about packets sent and received
@@ -169,23 +160,15 @@ public class CcsClient implements StanzaListener {
 		});
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(new StanzaListener() {
-			@Override
-			public void processPacket(Stanza stanza) throws NotConnectedException {
-				logger.log(Level.INFO, "Sent: {}", stanza.toXML());
-			}
-		}, ForEveryStanza.INSTANCE);
+		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()), ForEveryStanza.INSTANCE);
 		
 		// Set the ping interval
 		final PingManager pingManager = PingManager.getInstanceFor(connection);
 		pingManager.setPingInterval(100);
-		pingManager.registerPingFailedListener(new PingFailedListener() {
-			@Override
-			public void pingFailed() {
-				logger.info("The ping failed, restarting the ping interval again ...");
-				pingManager.setPingInterval(100);
-			}
-		});
+		pingManager.registerPingFailedListener(() -> {
+      logger.info("The ping failed, restarting the ping interval again ...");
+      pingManager.setPingInterval(100);
+    });
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
@@ -200,7 +183,7 @@ public class CcsClient implements StanzaListener {
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public void processPacket(Stanza packet) {
+	public void processStanza(Stanza packet) {
 		logger.log(Level.INFO, "Received: " + packet.toXML());
 		GcmPacketExtension gcmPacket = (GcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
 		String json = gcmPacket.getJson();
@@ -349,7 +332,7 @@ public class CcsClient implements StanzaListener {
 		Stanza request = new GcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
-		} catch (NotConnectedException e) {
+		} catch (NotConnectedException | InterruptedException e) {
 			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
 		}
 	}
@@ -368,5 +351,4 @@ public class CcsClient implements StanzaListener {
 			send(jsonRequest);
 		}
 	}
-
 }

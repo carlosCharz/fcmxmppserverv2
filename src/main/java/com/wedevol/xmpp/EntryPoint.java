@@ -1,7 +1,6 @@
 package com.wedevol.xmpp;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -17,13 +16,12 @@ import com.wedevol.xmpp.server.MessageHelper;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * Entry Point class for the XMPP Server in dev mode for debugging and testing
- * purposes
+ * Entry Point class for the XMPP Server in dev mode for debugging and testing purposes
  */
 public class EntryPoint {
-	
+
 	public static final Logger logger = Logger.getLogger(EntryPoint.class.getName());
-	
+
 	public static void main(String[] args) throws SmackException, IOException {
 		final String fcmProjectSenderId = args[0];
 		final String fcmServerKey = args[1];
@@ -46,10 +44,10 @@ public class EntryPoint {
 		ccsClient.send(jsonRequest);
 
 		try {
-            CountDownLatch latch = new CountDownLatch(1);
-            latch.await();
-        } catch (InterruptedException e) {
-            logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);
-        }
+			CountDownLatch latch = new CountDownLatch(1);
+			latch.await();
+		} catch (InterruptedException e) {
+			logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);
+		}
 	}
 }

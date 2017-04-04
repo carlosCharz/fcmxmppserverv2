@@ -29,9 +29,8 @@ import com.wedevol.xmpp.service.PayloadProcessor;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * Sample Smack implementation of a client for FCM Cloud Connection Server. Most
- * of it has been taken more or less verbatim from Google's documentation:
- * https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref
+ * Sample Smack implementation of a client for FCM Cloud Connection Server. Most of it has been taken more or less
+ * verbatim from Google's documentation: https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref
  */
 public class CcsClient implements StanzaListener {
 
@@ -103,9 +102,11 @@ public class CcsClient implements StanzaListener {
 		connection.connect();
 
 		// Enable automatic reconnection
+
 		ReconnectionManager reconnectionManager = ReconnectionManager.getInstanceFor(connection);
 		reconnectionManager.enableAutomaticReconnection();
 		reconnectionManager.setReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.RANDOM_INCREASING_DELAY);
+
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {
@@ -159,15 +160,16 @@ public class CcsClient implements StanzaListener {
 		});
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()), ForEveryStanza.INSTANCE);
-		
+		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()),
+				ForEveryStanza.INSTANCE);
+
 		// Set the ping interval
 		final PingManager pingManager = PingManager.getInstanceFor(connection);
 		pingManager.setPingInterval(100);
 		pingManager.registerPingFailedListener(() -> {
-      logger.info("The ping failed, restarting the ping interval again ...");
-      pingManager.setPingInterval(100);
-    });
+			logger.info("The ping failed, restarting the ping interval again ...");
+			pingManager.setPingInterval(100);
+		});
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
@@ -218,7 +220,8 @@ public class CcsClient implements StanzaListener {
 	 * Handles an upstream message from a device client through FCM
 	 */
 	private void handleUpstreamMessage(CcsInMessage inMessage) {
-		final String action = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_ACTION);
+		final String action = inMessage.getDataPayload()
+										.get(Util.PAYLOAD_ATTRIBUTE_ACTION);
 		if (action != null) {
 			PayloadProcessor processor = ProcessorFactory.getProcessor(action);
 			processor.handleMessage(inMessage);
@@ -281,8 +284,7 @@ public class CcsClient implements StanzaListener {
 	}
 
 	/**
-	 * Handles a Delivery Receipt message from FCM (when a device confirms that
-	 * it received a particular message)
+	 * Handles a Delivery Receipt message from FCM (when a device confirms that it received a particular message)
 	 */
 	private void handleDeliveryReceipt(Map<String, Object> jsonMap) {
 		// TODO: handle the delivery receipt
@@ -335,8 +337,8 @@ public class CcsClient implements StanzaListener {
 	}
 
 	/**
-	 * Sends a message to multiple recipients (list). Kind of like the old HTTP
-	 * message with the list of regIds in the "registration_ids" field.
+	 * Sends a message to multiple recipients (list). Kind of like the old HTTP message with the list of regIds in the
+	 * "registration_ids" field.
 	 */
 	public void sendBroadcast(CcsOutMessage outMessage, List<String> recipients) {
 		Map<String, Object> map = MessageHelper.createAttributeMap(outMessage);

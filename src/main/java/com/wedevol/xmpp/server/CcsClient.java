@@ -102,8 +102,11 @@ public class CcsClient implements StanzaListener {
 		connection.connect();
 
 		// Enable automatic reconnection
-		ReconnectionManager.getInstanceFor(connection)
-							.enableAutomaticReconnection();
+
+		ReconnectionManager reconnectionManager = ReconnectionManager.getInstanceFor(connection);
+		reconnectionManager.enableAutomaticReconnection();
+		reconnectionManager.setReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.RANDOM_INCREASING_DELAY);
+
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {
@@ -117,7 +120,6 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void reconnectionFailed(Exception e) {
 				logger.log(Level.INFO, "Reconnection failed: ", e.getMessage());
-				// TODO: handle the reconnection failed
 			}
 
 			@Override
@@ -129,13 +131,11 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void connectionClosedOnError(Exception e) {
 				logger.log(Level.INFO, "Connection closed on error");
-				// TODO: handle the connection closed on error
 			}
 
 			@Override
 			public void connectionClosed() {
 				logger.log(Level.INFO, "Connection closed");
-				// TODO: handle the connection closed
 			}
 
 			@Override
@@ -173,10 +173,6 @@ public class CcsClient implements StanzaListener {
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
-	}
-
-	public void reconnect() {
-		// Try to connect again using exponential back-off!
 	}
 
 	/**
@@ -333,8 +329,10 @@ public class CcsClient implements StanzaListener {
 		Stanza request = new GcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
-		} catch (NotConnectedException | InterruptedException e) {
+		} catch (NotConnectedException e) {
 			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
+		} catch (InterruptedException e ) {
+			logger.log(Level.INFO, "There is InterruptedException", request.toXML());
 		}
 	}
 

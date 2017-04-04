@@ -175,7 +175,7 @@ public class CcsClient implements StanzaListener {
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
 	}
 
-	public void reconnect() {
+	public synchronized void reconnect() {
 		// Try to connect again using exponential back-off!
 	}
 
@@ -334,7 +334,7 @@ public class CcsClient implements StanzaListener {
 		try {
 			connection.sendStanza(request);
 		} catch (NotConnectedException | InterruptedException e) {
-			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
+			logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
 		}
 	}
 

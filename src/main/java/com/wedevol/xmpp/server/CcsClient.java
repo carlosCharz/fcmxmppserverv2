@@ -103,7 +103,9 @@ public class CcsClient implements StanzaListener {
 		connection.connect();
 
 		// Enable automatic reconnection
-		ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection();
+		ReconnectionManager reconnectionManager = ReconnectionManager.getInstanceFor(connection);
+		reconnectionManager.enableAutomaticReconnection();
+		reconnectionManager.setReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.RANDOM_INCREASING_DELAY);
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {
@@ -117,7 +119,6 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void reconnectionFailed(Exception e) {
 				logger.log(Level.INFO, "Reconnection failed: ", e.getMessage());
-				reconnect();
 			}
 
 			@Override
@@ -129,13 +130,11 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void connectionClosedOnError(Exception e) {
 				logger.log(Level.INFO, "Connection closed on error");
-				reconnect();
 			}
 
 			@Override
 			public void connectionClosed() {
 				logger.log(Level.INFO, "Connection closed");
-				reconnect();
 			}
 
 			@Override
@@ -172,18 +171,6 @@ public class CcsClient implements StanzaListener {
 
 		connection.login(fcmServerUsername, mApiKey);
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
-	}
-
-	private synchronized void reconnect() {
-		try {
-			if(!connection.isConnected()) {
-				logger.info("Trying to reconnect");
-				Thread.sleep(10 * 1000);
-				connection.connect();
-			}
-		} catch (SmackException | IOException | InterruptedException | XMPPException e) {
-			reconnect();
-		}
 	}
 
 	/**

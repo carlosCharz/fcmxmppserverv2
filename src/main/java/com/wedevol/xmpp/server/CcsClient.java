@@ -117,7 +117,7 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void reconnectionFailed(Exception e) {
 				logger.log(Level.INFO, "Reconnection failed: ", e.getMessage());
-				// TODO: handle the reconnection failed
+				reconnect();
 			}
 
 			@Override
@@ -129,13 +129,13 @@ public class CcsClient implements StanzaListener {
 			@Override
 			public void connectionClosedOnError(Exception e) {
 				logger.log(Level.INFO, "Connection closed on error");
-				// TODO: handle the connection closed on error
+				reconnect();
 			}
 
 			@Override
 			public void connectionClosed() {
 				logger.log(Level.INFO, "Connection closed");
-				// TODO: handle the connection closed
+				reconnect();
 			}
 
 			@Override
@@ -175,8 +175,16 @@ public class CcsClient implements StanzaListener {
 		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
 	}
 
-	public void reconnect() {
-		// Try to connect again using exponential back-off!
+	private synchronized void reconnect() {
+		try {
+			if(!connection.isConnected()) {
+				logger.info("Trying to reconnect");
+				Thread.sleep(10 * 1000);
+				connection.connect();
+			}
+		} catch (SmackException | IOException | InterruptedException | XMPPException e) {
+			reconnect();
+		}
 	}
 
 	/**
@@ -333,8 +341,11 @@ public class CcsClient implements StanzaListener {
 		Stanza request = new GcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
-		} catch (NotConnectedException | InterruptedException e) {
+		} catch (NotConnectedException e) {
 			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
+			reconnect();
+		} catch (InterruptedException e ) {
+			logger.log(Level.INFO, "There is InterruptedException", request.toXML());
 		}
 	}
 

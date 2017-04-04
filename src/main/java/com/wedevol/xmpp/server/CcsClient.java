@@ -329,7 +329,6 @@ public class CcsClient implements StanzaListener {
 			connection.sendStanza(request);
 		} catch (NotConnectedException e) {
 			logger.log(Level.INFO, "There is no connection and the packet could not be sent: {}", request.toXML());
-			reconnect();
 		} catch (InterruptedException e ) {
 			logger.log(Level.INFO, "There is InterruptedException", request.toXML());
 		}

@@ -6,7 +6,6 @@
 	<artifactId>xmppserver2</artifactId>
 	<version>0.0.2</version>
 	<packaging>jar</packaging>
-
 	<name>FCM XMPP Server</name>
 
 	<properties>
@@ -42,12 +41,11 @@
 	<build>
 		<finalName>xmpp-server</finalName>
 		<plugins>
-
 			<!-- Set a JDK compiler level -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3.2</version>
+				<version>3.6.1</version>
 				<configuration>
 					<source>${jdk.version}</source>
 					<target>${jdk.version}</target>

@@ -14,16 +14,16 @@ For more information you must read the following documentation:
 * [New Smack Terminology](https://github.com/igniterealtime/Smack/wiki/New-Smack-Terminology)
 * [The Smack Javadoc](http://download.igniterealtime.org/smack/docs/latest/javadoc/)
 
-##New Smack libraries
+## New Smack libraries
 
  * [Smack java 7](https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-java7)
  * [Smack tcp](https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-tcp)
  * [Smack extensions](https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-extensions)
 
-##How to start the server
+## How to start the server
 Just because it is the same project as my prior solution, the way to start the server is exactly the same. You can read my [how to start the server](https://github.com/carlosCharz/fcmxmppserver).
 
-##Troubleshooting
+## Troubleshooting
 This is a simple java code. You can integrate with just spring or spring in a container (Tomcat for example). In any case you need to take into account 3 issues: 
 
 1. _**If using a simple java application, keep the application alive listening messages.**_ This problem occurs when you use a simple java code as a daemon in linux (that's why I put the while true workaround).
@@ -32,13 +32,13 @@ This is a simple java code. You can integrate with just spring or spring in a co
 
 3. _**Reconnection when connection draining.**_ The reconnection should be handled to connect again to the FCM using the same parameters with a backoff strategy. Smack can handle the automatic reconnection if you enable it but if the connection will be closed from the FCM side you should call your reconnection method when FCM sends connection draining control message or connection draining error message.
 
-##About me
+## About me
 I am Carlos Becerra - MSc. Softwware & Systems. You can contact me via:
 
 * [Google+](https://plus.google.com/+CarlosBecerraRodr%C3%ADguez)
 * [Twitter](https://twitter.com/CarlosBecerraRo)
 
-##Thanks
+## Thanks
 To tell the truth. I was really worried looking for the right solution. Finally, I made a list of useful links (apart from the above documentation links).
 
 * [gcm server](http://www.marothiatechs.com/2015/08/building-your-own-android-chat_18.html)
@@ -48,7 +48,7 @@ To tell the truth. I was really worried looking for the right solution. Finally,
 
 _**Any improvement or comment about the project is always welcome! As well as others shared their code publicly I want to share mine! Thanks!**_
 
-##License
+## License
 ```javas
 Copyright 2016 Carlos Becerra
 

@@ -4,7 +4,7 @@
 
 	<groupId>com.wedevol</groupId>
 	<artifactId>xmppserver2</artifactId>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 	<packaging>jar</packaging>
 	<name>FCM XMPP Server</name>
 
@@ -45,7 +45,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.6.1</version>
+				<version>3.6.2</version>
 				<configuration>
 					<source>${jdk.version}</source>
 					<target>${jdk.version}</target>

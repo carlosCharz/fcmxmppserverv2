@@ -8,12 +8,19 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.jivesoftware.smack.*;
+import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.ConnectionListener;
+import org.jivesoftware.smack.ReconnectionManager;
+import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jivesoftware.smack.StanzaListener;
+import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.sm.predicates.ForEveryStanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
@@ -104,6 +111,9 @@ public class CcsClient implements StanzaListener {
 		// Enable automatic reconnection
 		ReconnectionManager.getInstanceFor(connection)
 							.enableAutomaticReconnection();
+		
+		// Disable Roster at login
+		Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {

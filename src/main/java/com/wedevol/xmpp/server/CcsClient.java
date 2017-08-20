@@ -170,7 +170,7 @@ public class CcsClient implements StanzaListener {
 		});
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: {}", stanza.toXML()),
+		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()),
 				ForEveryStanza.INSTANCE);
 
 		// Set the ping interval

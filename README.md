@@ -14,6 +14,11 @@ For more information you must read the following documentation:
 * [New Smack Terminology](https://github.com/igniterealtime/Smack/wiki/New-Smack-Terminology)
 * [The Smack Javadoc](http://download.igniterealtime.org/smack/docs/latest/javadoc/)
 
+_**ADDITIONAL USEFUL LINKS**_
+
+* [XMPP Connection Server for FCM](https://github.com/carlosCharz/fcmxmppserver): This project is the original code base and it gives you a simple explanation of FCM XMPP Connection Server.
+* [FCM Connection Draining solution explanation](https://youtu.be/6AQCnNWPksg): This video explains how I handle the FCM Connection Draining message.
+
 ## New Smack libraries
 
  * [Smack java 7](https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-java7)

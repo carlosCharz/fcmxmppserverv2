@@ -11,6 +11,7 @@ import javax.net.ssl.SSLSocketFactory;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.ReconnectionManager;
+import org.jivesoftware.smack.SASLAuthentication;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.StanzaListener;
@@ -113,6 +114,11 @@ public class CcsClient implements StanzaListener {
 		
 		// Disable Roster at login
 		Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
+		
+		// Check SASL authentication
+		logger.log(Level.INFO, "SASL PLAIN authentication enabled? " + SASLAuthentication.isSaslMechanismRegistered("PLAIN"));
+		SASLAuthentication.unBlacklistSASLMechanism("PLAIN");
+		SASLAuthentication.blacklistSASLMechanism("DIGEST-MD5");
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {

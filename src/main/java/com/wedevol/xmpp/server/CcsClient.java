@@ -196,8 +196,8 @@ public class CcsClient implements StanzaListener {
 	@Override
 	public void processStanza(Stanza packet) {
 		logger.log(Level.INFO, "Received: " + packet.toXML());
-		FcmPacketExtension gcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
-		String json = gcmPacket.getJson();
+		FcmPacketExtension fcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
+		String json = fcmPacket.getJson();
 		try {
 			Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
 			Object messageType = jsonMap.get("message_type");

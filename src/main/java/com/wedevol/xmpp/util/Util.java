@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public class Util {
 
-	// For the GCM connection
+	// For the FCM connection
 	public static final String FCM_SERVER = "fcm-xmpp.googleapis.com";
 	public static final int FCM_PORT = 5236;
 	public static final String FCM_ELEMENT_NAME = "gcm";

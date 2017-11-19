@@ -7,13 +7,13 @@ import org.jivesoftware.smack.packet.Stanza;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * XMPP Packet Extension for GCM Cloud Connection Server
+ * XMPP Packet Extension for FCM Cloud Connection Server
  */
-public class GcmPacketExtension implements ExtensionElement {
+public class FcmPacketExtension implements ExtensionElement {
 
 	private String json;
 
-	public GcmPacketExtension(String json) {
+	public FcmPacketExtension(String json) {
 		this.json = json;
 	}
 

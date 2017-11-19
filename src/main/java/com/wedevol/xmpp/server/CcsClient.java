@@ -75,12 +75,12 @@ public class CcsClient implements StanzaListener {
 	private CcsClient() {
 		// Add FCMPacketExtension
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
-				new ExtensionElementProvider<GcmPacketExtension>() {
+				new ExtensionElementProvider<FcmPacketExtension>() {
 					@Override
-					public GcmPacketExtension parse(XmlPullParser parser, int initialDepth)
+					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth)
 							throws XmlPullParserException, IOException, SmackException {
 						String json = parser.nextText();
-						return new GcmPacketExtension(json);
+						return new FcmPacketExtension(json);
 					}
 				});
 	}
@@ -196,7 +196,7 @@ public class CcsClient implements StanzaListener {
 	@Override
 	public void processStanza(Stanza packet) {
 		logger.log(Level.INFO, "Received: " + packet.toXML());
-		GcmPacketExtension gcmPacket = (GcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
+		FcmPacketExtension gcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
 		String json = gcmPacket.getJson();
 		try {
 			Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
@@ -340,7 +340,7 @@ public class CcsClient implements StanzaListener {
 	 */
 	public void send(String jsonRequest) {
 		// TODO: Resend the message using exponential back-off!
-		Stanza request = new GcmPacketExtension(jsonRequest).toPacket();
+		Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
 		} catch (NotConnectedException | InterruptedException e) {

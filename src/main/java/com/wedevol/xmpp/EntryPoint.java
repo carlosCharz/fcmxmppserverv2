@@ -32,7 +32,7 @@ public class EntryPoint {
 		try {
 			ccsClient.connect();
 		} catch (XMPPException | InterruptedException e) {
-			e.printStackTrace();
+			logger.log(Level.SEVERE, "Error trying to connect.", e);
 		}
 
 		// Send a sample downstream message to a device

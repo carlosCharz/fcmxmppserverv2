@@ -16,7 +16,6 @@ import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.jivesoftware.smack.provider.ProviderManager;
@@ -73,7 +72,7 @@ public class CcsClient implements StanzaListener {
 	}
 
 	private CcsClient() {
-		// Add GcmPacketExtension
+		// Add FCMPacketExtension
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
 				new ExtensionElementProvider<GcmPacketExtension>() {
 					@Override
@@ -161,13 +160,8 @@ public class CcsClient implements StanzaListener {
 			}
 		});
 
-		// Handle incoming packets (the class implements the StanzaListener)
-		connection.addAsyncStanzaListener(this, new StanzaFilter() {
-			@Override
-			public boolean accept(Stanza stanza) {
-				return stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE);
-			}
-		});
+		// Handle incoming packets and reject messages that are not from FCM CCS
+		connection.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
 		// Log all outgoing packets
 		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()),

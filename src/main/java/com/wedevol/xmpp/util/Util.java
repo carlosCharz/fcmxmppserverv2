@@ -16,10 +16,9 @@ public class Util {
 	public static final String FCM_SERVER_CONNECTION = "gcm.googleapis.com";
 
 	// For the processor factory
-	public static final String PACKAGE = "com.wedevol";
-	public static final String BACKEND_ACTION_REGISTER = PACKAGE + ".REGISTER";
-	public static final String BACKEND_ACTION_ECHO = PACKAGE + ".ECHO";
-	public static final String BACKEND_ACTION_MESSAGE = PACKAGE + ".MESSAGE";
+	public static final String BACKEND_ACTION_REGISTER = "REGISTER";
+	public static final String BACKEND_ACTION_ECHO = "ECHO";
+	public static final String BACKEND_ACTION_MESSAGE = "MESSAGE";
 
 	// For the app common payload message attributes (android - xmpp server)
 	public static final String PAYLOAD_ATTRIBUTE_MESSAGE = "message";

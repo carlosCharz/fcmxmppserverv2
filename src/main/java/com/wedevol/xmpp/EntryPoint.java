@@ -16,7 +16,7 @@ import com.wedevol.xmpp.server.MessageHelper;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * Entry Point class for the XMPP Server in dev mode for debugging and testing purposes
+ * Entry Point class for the XMPP Server
  */
 public class EntryPoint {
 
@@ -27,7 +27,7 @@ public class EntryPoint {
 		final String fcmServerKey = args[1];
 		final String toRegId = args[2];
 
-		CcsClient ccsClient = CcsClient.prepareClient(fcmProjectSenderId, fcmServerKey, true);
+		CcsClient ccsClient = CcsClient.prepareCcsClient(fcmProjectSenderId, fcmServerKey, true); // true for debugging
 
 		try {
 			ccsClient.connect();

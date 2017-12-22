@@ -43,35 +43,28 @@ public class CcsClient implements StanzaListener {
 
 	private static final Logger logger = Logger.getLogger(CcsClient.class.getName());
 
-	private static CcsClient sInstance = null;
+	private static CcsClient ccsInstance = null;
 	private XMPPTCPConnection connection;
-	private String mApiKey = null;
-	private boolean mDebuggable = false;
-	private String fcmServerUsername = null;
+	private String apiKey = null;
+	private boolean debuggable = false;
+	private String username = null;
 
 	public static CcsClient getInstance() {
-		if (sInstance == null) {
+		if (ccsInstance == null) {
 			throw new IllegalStateException("You have to prepare the client first");
 		}
-		return sInstance;
+		return ccsInstance;
 	}
 
-	public static CcsClient prepareClient(String projectId, String apiKey, boolean debuggable) {
+	public static CcsClient prepareCcsClient(String projectId, String apiKey, boolean debuggable) {
 		synchronized (CcsClient.class) {
-			if (sInstance == null) {
-				sInstance = new CcsClient(projectId, apiKey, debuggable);
+			if (ccsInstance == null) {
+				ccsInstance = new CcsClient(projectId, apiKey, debuggable);
 			}
 		}
-		return sInstance;
+		return ccsInstance;
 	}
-
-	private CcsClient(String projectId, String apiKey, boolean debuggable) {
-		this();
-		mApiKey = apiKey;
-		mDebuggable = debuggable;
-		fcmServerUsername = projectId + "@" + Util.FCM_SERVER_CONNECTION;
-	}
-
+	
 	private CcsClient() {
 		// Add FCMPacketExtension
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
@@ -85,12 +78,18 @@ public class CcsClient implements StanzaListener {
 				});
 	}
 
+	private CcsClient(String projectId, String apiKey, boolean debuggable) {
+		this();
+		this.apiKey = apiKey;
+		this.debuggable = debuggable;
+		this.username = projectId + "@" + Util.FCM_SERVER_CONNECTION;
+	}
+
 	/**
 	 * Connects to FCM Cloud Connection Server using the supplied credentials
 	 */
 	public void connect() throws XMPPException, SmackException, IOException, InterruptedException {
-		XMPPTCPConnection.setUseStreamManagementResumptionDefault(true);
-		XMPPTCPConnection.setUseStreamManagementDefault(true);
+		logger.log(Level.INFO, "Initiating connection ...");
 
 		XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
 		config.setXmppDomain("FCM XMPP Client Connection Server");
@@ -99,8 +98,7 @@ public class CcsClient implements StanzaListener {
 		config.setSecurityMode(ConnectionConfiguration.SecurityMode.ifpossible);
 		config.setSendPresence(false);
 		config.setSocketFactory(SSLSocketFactory.getDefault());
-		// Launch a window with info about packets sent and received
-		config.setDebuggerEnabled(mDebuggable);
+		config.setDebuggerEnabled(debuggable); // Launch a window with info about packets sent and received
 
 		// Create the connection
 		connection = new XMPPTCPConnection(config.build());
@@ -109,8 +107,7 @@ public class CcsClient implements StanzaListener {
 		connection.connect();
 
 		// Enable automatic reconnection
-		ReconnectionManager.getInstanceFor(connection)
-							.enableAutomaticReconnection();
+		ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection();
 		
 		// Disable Roster at login
 		Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
@@ -170,8 +167,7 @@ public class CcsClient implements StanzaListener {
 		connection.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
 		// Log all outgoing packets
-		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()),
-				ForEveryStanza.INSTANCE);
+		connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()), ForEveryStanza.INSTANCE);
 
 		// Set the ping interval
 		final PingManager pingManager = PingManager.getInstanceFor(connection);
@@ -181,11 +177,12 @@ public class CcsClient implements StanzaListener {
 			pingManager.setPingInterval(100);
 		});
 
-		connection.login(fcmServerUsername, mApiKey);
-		logger.log(Level.INFO, "Logged in: " + fcmServerUsername);
+		connection.login(username, apiKey);
+		logger.log(Level.INFO, "User logged in: " + username);
 	}
 
 	public synchronized void reconnect() {
+		logger.log(Level.INFO, "Initiating reconnection ...");
 		// Try to connect again using exponential back-off!
 	}
 

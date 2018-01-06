@@ -15,8 +15,7 @@ public class Util {
 	public static final String FCM_NAMESPACE = "google:mobile:data";
 	public static final String FCM_SERVER_CONNECTION = "gcm.googleapis.com";
 
-	// For the processor factory
-	public static final String BACKEND_ACTION_REGISTER = "REGISTER";
+	// For the message process types
 	public static final String BACKEND_ACTION_ECHO = "ECHO";
 	public static final String BACKEND_ACTION_MESSAGE = "MESSAGE";
 

@@ -32,7 +32,6 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
-import com.wedevol.xmpp.service.PayloadProcessor;
 import com.wedevol.xmpp.util.Util;
 
 /**
@@ -231,14 +230,33 @@ public class CcsClient implements StanzaListener {
 	 * Handles an upstream message from a device client through FCM
 	 */
 	private void handleUpstreamMessage(CcsInMessage inMessage) {
+		// The custom 'action' payload attribute defines what the message action is about.
 		final String action = inMessage.getDataPayload()
 										.get(Util.PAYLOAD_ATTRIBUTE_ACTION);
-		if (action != null) {
-			PayloadProcessor processor = ProcessorFactory.getProcessor(action);
-			processor.handleMessage(inMessage);
+		if (action == null) {
+			throw new IllegalStateException("Action must not be null! Options: 'ECHO', 'MESSAGE'");
+		}
+		
+		// 1. process and send message
+		if (action.equals(Util.BACKEND_ACTION_ECHO)) { // send a message to the sender (user itself)
+			String messageId = Util.getUniqueMessageId();
+			String to = inMessage.getFrom();
+			
+			CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
+			String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
+			send(jsonRequest);
+		} else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
+			String messageId = Util.getUniqueMessageId();
+			// it should be the user id to be retrieved from the data base
+		    String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
+		    
+		    // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
+		    CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
+		    String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
+		    send(jsonRequest);
 		}
 
-		// Send ACK to FCM
+		// 2. send ACK to FCM
 		String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
 		send(ack);
 	}

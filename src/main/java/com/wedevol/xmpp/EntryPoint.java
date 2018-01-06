@@ -27,7 +27,7 @@ public class EntryPoint {
 		final String fcmServerKey = args[1];
 		final String toRegId = args[2];
 
-		CcsClient ccsClient = CcsClient.prepareCcsClient(fcmProjectSenderId, fcmServerKey, true); // true for debugging
+		final CcsClient ccsClient = CcsClient.prepareCcsClient(fcmProjectSenderId, fcmServerKey, true); // true for debugging
 
 		try {
 			ccsClient.connect();
@@ -36,15 +36,15 @@ public class EntryPoint {
 		}
 
 		// Send a sample downstream message to a device
-		String messageId = Util.getUniqueMessageId();
-		Map<String, String> dataPayload = new HashMap<String, String>();
+		final String messageId = Util.getUniqueMessageId();
+		final Map<String, String> dataPayload = new HashMap<String, String>();
 		dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
-		CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
-		String jsonRequest = MessageHelper.createJsonOutMessage(message);
+		final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
+		final String jsonRequest = MessageHelper.createJsonOutMessage(message);
 		ccsClient.send(jsonRequest);
 
 		try {
-			CountDownLatch latch = new CountDownLatch(1);
+			final CountDownLatch latch = new CountDownLatch(1);
 			latch.await();
 		} catch (InterruptedException e) {
 			logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);

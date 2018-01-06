@@ -28,7 +28,7 @@ public class FcmPacketExtension implements ExtensionElement {
 	}
 
 	public Stanza toPacket() {
-		Message message = new Message();
+		final Message message = new Message();
 		message.addExtension(this);
 		return message;
 	}

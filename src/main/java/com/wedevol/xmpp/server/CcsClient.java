@@ -71,7 +71,7 @@ public class CcsClient implements StanzaListener {
 					@Override
 					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth)
 							throws XmlPullParserException, IOException, SmackException {
-						String json = parser.nextText();
+						final String json = parser.nextText();
 						return new FcmPacketExtension(json);
 					}
 				});
@@ -90,14 +90,14 @@ public class CcsClient implements StanzaListener {
 	public void connect() throws XMPPException, SmackException, IOException, InterruptedException {
 		logger.log(Level.INFO, "Initiating connection ...");
 
-		XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
+		final XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
 		config.setXmppDomain("FCM XMPP Client Connection Server");
 		config.setHost(Util.FCM_SERVER);
 		config.setPort(Util.FCM_PORT);
 		config.setSecurityMode(ConnectionConfiguration.SecurityMode.ifpossible);
 		config.setSendPresence(false);
 		config.setSocketFactory(SSLSocketFactory.getDefault());
-		config.setDebuggerEnabled(debuggable); // Launch a window with info about packets sent and received
+		config.setDebuggerEnabled(debuggable); // launch a window with info about packets sent and received
 
 		// Create the connection
 		connection = new XMPPTCPConnection(config.build());
@@ -182,25 +182,25 @@ public class CcsClient implements StanzaListener {
 
 	public synchronized void reconnect() {
 		logger.log(Level.INFO, "Initiating reconnection ...");
-		// Try to connect again using exponential back-off!
+		// TODO: try to connect again using exponential back-off!
 	}
 
 	/**
-	 * Handles incoming messages
+	 * Handle incoming messages
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
 	public void processStanza(Stanza packet) {
 		logger.log(Level.INFO, "Received: " + packet.toXML());
-		FcmPacketExtension fcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
-		String json = fcmPacket.getJson();
+		final FcmPacketExtension fcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
+		final String json = fcmPacket.getJson();
 		try {
-			Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
-			Object messageType = jsonMap.get("message_type");
+			final Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
+			final Object messageType = jsonMap.get("message_type");
 
-			if (messageType == null) {
-				CcsInMessage inMessage = MessageHelper.createCcsInMessage(jsonMap);
-				handleUpstreamMessage(inMessage); // normal upstream message
+			if (messageType == null) { // normal upstream message
+				final CcsInMessage inMessage = MessageHelper.createCcsInMessage(jsonMap);
+				handleUpstreamMessage(inMessage);
 				return;
 			}
 
@@ -239,25 +239,25 @@ public class CcsClient implements StanzaListener {
 		
 		// 1. process and send message
 		if (action.equals(Util.BACKEND_ACTION_ECHO)) { // send a message to the sender (user itself)
-			String messageId = Util.getUniqueMessageId();
-			String to = inMessage.getFrom();
+			final String messageId = Util.getUniqueMessageId();
+			final String to = inMessage.getFrom();
 			
-			CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-			String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
+			final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
+			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
 			send(jsonRequest);
 		} else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
-			String messageId = Util.getUniqueMessageId();
-			// it should be the user id to be retrieved from the data base
-		    String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
+			final String messageId = Util.getUniqueMessageId();
+			// TODO: it should be the user id to be retrieved from the data base
+			final String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
 		    
 		    // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
-		    CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-		    String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
+			final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
+			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
 		    send(jsonRequest);
 		}
 
 		// 2. send ACK to FCM
-		String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
+		final String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
 		send(ack);
 	}
 
@@ -272,7 +272,7 @@ public class CcsClient implements StanzaListener {
 	 * Handles a NACK message from FCM
 	 */
 	private void handleNackReceipt(Map<String, Object> jsonMap) {
-		String errorCode = (String) jsonMap.get("error");
+		final String errorCode = (String) jsonMap.get("error");
 
 		if (errorCode == null) {
 			logger.log(Level.INFO, "Received null FCM Error Code");
@@ -324,7 +324,7 @@ public class CcsClient implements StanzaListener {
 	 */
 	private void handleControlMessage(Map<String, Object> jsonMap) {
 		// TODO: handle the control message
-		String controlType = (String) jsonMap.get("control_type");
+		final String controlType = (String) jsonMap.get("control_type");
 
 		if (controlType.equals("CONNECTION_DRAINING")) {
 			handleConnectionDrainingFailure();
@@ -341,8 +341,7 @@ public class CcsClient implements StanzaListener {
 
 	private void handleUnrecoverableFailure(Map<String, Object> jsonMap) {
 		// TODO: handle the unrecoverable failure
-		logger.log(Level.INFO,
-				"Unrecoverable error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
+		logger.log(Level.INFO, "Unrecoverable error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
 	}
 
 	private void handleConnectionDrainingFailure() {
@@ -355,7 +354,7 @@ public class CcsClient implements StanzaListener {
 	 */
 	public void send(String jsonRequest) {
 		// TODO: Resend the message using exponential back-off!
-		Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
+		final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
 		} catch (NotConnectedException | InterruptedException e) {
@@ -368,12 +367,12 @@ public class CcsClient implements StanzaListener {
 	 * "registration_ids" field.
 	 */
 	public void sendBroadcast(CcsOutMessage outMessage, List<String> recipients) {
-		Map<String, Object> map = MessageHelper.createAttributeMap(outMessage);
+		final Map<String, Object> map = MessageHelper.createAttributeMap(outMessage);
 		for (String toRegId : recipients) {
-			String messageId = Util.getUniqueMessageId();
+			final String messageId = Util.getUniqueMessageId();
 			map.put("message_id", messageId);
 			map.put("to", toRegId);
-			String jsonRequest = MessageHelper.createJsonMessage(map);
+			final String jsonRequest = MessageHelper.createJsonMessage(map);
 			send(jsonRequest);
 		}
 	}

@@ -9,8 +9,7 @@ import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 
 /**
- * Helper for the transformation of JSON messages to attribute maps and vice
- * versa in the XMPP Server
+ * Helper for the transformation of JSON messages to attribute maps and vice versa in the XMPP Server
  */
 
 public class MessageHelper {
@@ -26,7 +25,7 @@ public class MessageHelper {
 	 * Creates a JSON encoded ACK message for a received upstream message
 	 */
 	public static String createJsonAck(String to, String messageId) {
-		Map<String, Object> map = new HashMap<String, Object>();
+		final Map<String, Object> map = new HashMap<String, Object>();
 		map.put("message_type", "ack");
 		map.put("to", to);
 		map.put("message_id", messageId);
@@ -41,7 +40,7 @@ public class MessageHelper {
 	 * Creates a MAP from a FCM outgoing message attributes
 	 */
 	public static Map<String, Object> createAttributeMap(CcsOutMessage msg) {
-		Map<String, Object> map = new HashMap<String, Object>();
+		final Map<String, Object> map = new HashMap<String, Object>();
 		if (msg.getTo() != null) {
 			map.put("to", msg.getTo());
 		}
@@ -81,13 +80,11 @@ public class MessageHelper {
 	 */
 	@SuppressWarnings("unchecked")
 	public static CcsInMessage createCcsInMessage(Map<String, Object> jsonMap) {
-		String from = jsonMap.get("from").toString();
-		// Package name of the application that sent this message
-		String category = jsonMap.get("category").toString();
-		// Unique id of this message
-		String messageId = jsonMap.get("message_id").toString();
-		Map<String, String> dataPayload = (Map<String, String>) jsonMap.get("data");
-		CcsInMessage msg = new CcsInMessage(from, category, messageId, dataPayload);
+		final String from = jsonMap.get("from").toString();
+		final String category = jsonMap.get("category").toString(); // package name of the app that sent this message
+		final String messageId = jsonMap.get("message_id").toString(); // unique id for this message
+		final Map<String, String> dataPayload = (Map<String, String>) jsonMap.get("data");
+		final CcsInMessage msg = new CcsInMessage(from, category, messageId, dataPayload);
 		return msg;
 	}
 

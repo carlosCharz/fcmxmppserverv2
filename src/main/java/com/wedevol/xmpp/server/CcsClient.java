@@ -73,7 +73,7 @@ public class CcsClient implements StanzaListener {
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
 				new ExtensionElementProvider<FcmPacketExtension>() {
 					@Override
-					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth)
+					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth) 
 							throws XmlPullParserException, IOException, SmackException {
 						final String json = parser.nextText();
 						return new FcmPacketExtension(json);
@@ -203,7 +203,7 @@ public class CcsClient implements StanzaListener {
 	private void resendPendingMessages() {
 		logger.log(Level.INFO, "Sending pending messages through the new connection");
 		logger.log(Level.INFO, "Pending messages size: {}", pendingMessages.size());
-		Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
+		final Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
 		for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
 	        sendPacket(message.getKey(), message.getValue());
 	    }
@@ -289,7 +289,6 @@ public class CcsClient implements StanzaListener {
 	 * Handles an ACK message from FCM
 	 */
 	private void handleAckReceipt(Map<String, Object> jsonMap) {
-		// Remove the message from the pending messages list
 		removeMessageFromPendingMessages(jsonMap);
 	}
 
@@ -297,7 +296,6 @@ public class CcsClient implements StanzaListener {
 	 * Handles a NACK message from FCM
 	 */
 	private void handleNackReceipt(Map<String, Object> jsonMap) {
-		// Remove the message from the pending messages list
 		removeMessageFromPendingMessages(jsonMap);
 				
 		final String errorCode = (String) jsonMap.get("error");
@@ -351,7 +349,6 @@ public class CcsClient implements StanzaListener {
 	 * Handles a Control message from FCM
 	 */
 	private void handleControlMessage(Map<String, Object> jsonMap) {
-		// TODO: handle the control message
 		final String controlType = (String) jsonMap.get("control_type");
 
 		if (controlType.equals("CONNECTION_DRAINING")) {

@@ -3,12 +3,13 @@ package com.wedevol.xmpp.server;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.ReconnectionManager;
 import org.jivesoftware.smack.SASLAuthentication;
@@ -47,6 +48,8 @@ public class CcsClient implements StanzaListener {
 	private String apiKey = null;
 	private boolean debuggable = false;
 	private String username = null;
+	private Boolean isConnectionDraining = false;
+	private final Map<String, String> pendingMessages = new ConcurrentHashMap<>();
 
 	public static CcsClient getInstance() {
 		if (ccsInstance == null) {
@@ -89,12 +92,15 @@ public class CcsClient implements StanzaListener {
 	 */
 	public void connect() throws XMPPException, SmackException, IOException, InterruptedException {
 		logger.log(Level.INFO, "Initiating connection ...");
+		
+		// Set connection draining to false when there is a new connection
+		isConnectionDraining = false;
 
 		final XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
 		config.setXmppDomain("FCM XMPP Client Connection Server");
 		config.setHost(Util.FCM_SERVER);
 		config.setPort(Util.FCM_PORT);
-		config.setSecurityMode(ConnectionConfiguration.SecurityMode.ifpossible);
+		config.setSecurityMode(SecurityMode.ifpossible);
 		config.setSendPresence(false);
 		config.setSocketFactory(SSLSocketFactory.getDefault());
 		config.setDebuggerEnabled(debuggable); // launch a window with info about packets sent and received

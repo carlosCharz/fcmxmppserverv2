@@ -41,7 +41,7 @@ public class EntryPoint {
 		dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
 		final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
 		final String jsonRequest = MessageHelper.createJsonOutMessage(message);
-		ccsClient.send(jsonRequest);
+		ccsClient.sendPacket(jsonRequest);
 
 		try {
 			final CountDownLatch latch = new CountDownLatch(1);

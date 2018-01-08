@@ -1,6 +1,7 @@
 package com.wedevol.xmpp.server;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -151,8 +152,10 @@ public class CcsClient implements StanzaListener {
 
 			@Override
 			public void connectionClosed() {
-				logger.log(Level.INFO, "Connection closed");
-				// TODO: handle the connection closed
+				logger.log(Level.INFO, "Connection closed. The current connectionDraining flag is: %s.", isConnectionDraining);
+				if (isConnectionDraining) {
+					reconnect();
+				}
 			}
 
 			@Override
@@ -188,7 +191,22 @@ public class CcsClient implements StanzaListener {
 
 	public synchronized void reconnect() {
 		logger.log(Level.INFO, "Initiating reconnection ...");
-		// TODO: try to connect again using exponential back-off!
+		try {
+			// TODO: use exponential back-off!
+			connect();
+			resendPendingMessages();
+		} catch (XMPPException | SmackException | IOException | InterruptedException e) {
+			logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message");
+		}
+	}
+	
+	private void resendPendingMessages() {
+		logger.log(Level.INFO, "Sending pending messages through the new connection");
+		logger.log(Level.INFO, "Pending messages size: {}", pendingMessages.size());
+		Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
+		for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
+	        sendPacket(message.getKey(), message.getValue());
+	    }
 	}
 
 	/**
@@ -243,14 +261,18 @@ public class CcsClient implements StanzaListener {
 			throw new IllegalStateException("Action must not be null! Options: 'ECHO', 'MESSAGE'");
 		}
 		
-		// 1. process and send message
+		// 1. send ACK to FCM
+		final String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
+		sendPacket(ack);
+		
+		// 2. process and send message
 		if (action.equals(Util.BACKEND_ACTION_ECHO)) { // send a message to the sender (user itself)
 			final String messageId = Util.getUniqueMessageId();
 			final String to = inMessage.getFrom();
 			
 			final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
 			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
-			send(jsonRequest);
+			sendPacket(messageId, jsonRequest);
 		} else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
 			final String messageId = Util.getUniqueMessageId();
 			// TODO: it should be the user id to be retrieved from the data base
@@ -259,25 +281,25 @@ public class CcsClient implements StanzaListener {
 		    // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
 			final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
 			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
-		    send(jsonRequest);
+		    sendPacket(messageId, jsonRequest);
 		}
-
-		// 2. send ACK to FCM
-		final String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
-		send(ack);
 	}
 
 	/**
 	 * Handles an ACK message from FCM
 	 */
 	private void handleAckReceipt(Map<String, Object> jsonMap) {
-		// TODO: handle the ACK in the proper way
+		// Remove the message from the pending messages list
+		removeMessageFromPendingMessages(jsonMap);
 	}
 
 	/**
 	 * Handles a NACK message from FCM
 	 */
 	private void handleNackReceipt(Map<String, Object> jsonMap) {
+		// Remove the message from the pending messages list
+		removeMessageFromPendingMessages(jsonMap);
+				
 		final String errorCode = (String) jsonMap.get("error");
 
 		if (errorCode == null) {
@@ -351,15 +373,25 @@ public class CcsClient implements StanzaListener {
 	}
 
 	private void handleConnectionDrainingFailure() {
-		// TODO: handle the connection draining failure. Force reconnect?
-		logger.log(Level.INFO, "FCM Connection is draining! Initiating reconnection ...");
+		logger.log(Level.INFO, "FCM Connection is draining!");
+		isConnectionDraining = true;
 	}
-
+	
 	/**
 	 * Sends a downstream message to FCM
 	 */
-	public void send(String jsonRequest) {
-		// TODO: Resend the message using exponential back-off!
+	public void sendPacket(String messageId, String jsonRequest) {
+		pendingMessages.put(messageId, jsonRequest);
+		if (!isConnectionDraining) {
+			sendPacket(jsonRequest);
+		}
+	}
+
+	/**
+	 * Sends a downstream message to FCM with back off strategy
+	 */
+	public void sendPacket(String jsonRequest) {
+		// TODO: send message using exponential back-off!
 		final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
 		try {
 			connection.sendStanza(request);
@@ -379,7 +411,19 @@ public class CcsClient implements StanzaListener {
 			map.put("message_id", messageId);
 			map.put("to", toRegId);
 			final String jsonRequest = MessageHelper.createJsonMessage(map);
-			send(jsonRequest);
+			sendPacket(messageId, jsonRequest);
+		}
+	}
+	
+	/**
+	 * Remove the message from the pending messages list
+	 */
+	private void removeMessageFromPendingMessages(Map<String, Object> jsonMap) {
+		// Get the message_id attribute
+		final String messageId = (String) jsonMap.get("message_id");
+		if (messageId != null) {
+			// Remove the messageId from the pending messages list
+			pendingMessages.remove(messageId);
 		}
 	}
 }

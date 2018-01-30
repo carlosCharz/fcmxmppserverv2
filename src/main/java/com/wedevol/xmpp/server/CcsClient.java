@@ -388,13 +388,33 @@ public class CcsClient implements StanzaListener {
 	 * Sends a downstream message to FCM with back off strategy
 	 */
 	public void sendPacket(String jsonRequest) {
-		// TODO: send message using exponential back-off!
-		final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
-		try {
-			connection.sendStanza(request);
-		} catch (NotConnectedException | InterruptedException e) {
-			logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
-		}
+		sendPacket(jsonRequest, 0);
+	}
+	
+	/**
+	 * Sends a downstream message to FCM with back off strategy
+	 * 
+	 * Delay must greater than 0
+	 */
+	public void sendPacket(String jsonRequest, final int delayPower) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
+				try {
+					synchronized(this) {
+						this.wait(1000 * (long)Math.pow(2, delayPower));
+						connection.sendStanza(request);
+					}
+				} catch (NotConnectedException | InterruptedException e) {
+					int nextAttempt = delayPower + 1;
+					logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
+					logger.log(Level.INFO, "Retrying in " + (int) Math.pow(2, nextAttempt) + " second(s).");
+					sendPacket(jsonRequest, nextAttempt);
+				}
+			}
+		}).start();
 	}
 
 	/**

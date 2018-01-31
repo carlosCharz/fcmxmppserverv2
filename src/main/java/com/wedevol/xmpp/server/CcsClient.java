@@ -34,6 +34,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
+import com.wedevol.xmpp.util.BackOffStrategy;
 import com.wedevol.xmpp.util.Util;
 
 /**
@@ -191,12 +192,17 @@ public class CcsClient implements StanzaListener {
 
 	public synchronized void reconnect() {
 		logger.log(Level.INFO, "Initiating reconnection ...");
-		try {
-			// TODO: use exponential back-off!
-			connect();
-			resendPendingMessages();
-		} catch (XMPPException | SmackException | IOException | InterruptedException e) {
-			logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message");
+		final BackOffStrategy backoff = new BackOffStrategy(5, 1000);
+		while (backoff.shouldRetry()) {
+			try {
+				// TODO: use exponential back-off!
+				connect();
+				resendPendingMessages();
+				backoff.doNotRetry();
+			} catch (XMPPException | SmackException | IOException | InterruptedException e) {
+				logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message");
+				backoff.errorOccured();
+			}
 		}
 	}
 	
@@ -388,12 +394,16 @@ public class CcsClient implements StanzaListener {
 	 * Sends a downstream message to FCM with back off strategy
 	 */
 	public void sendPacket(String jsonRequest) {
-		// TODO: send message using exponential back-off!
 		final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
-		try {
-			connection.sendStanza(request);
-		} catch (NotConnectedException | InterruptedException e) {
-			logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
+		final BackOffStrategy backoff = new BackOffStrategy();
+		while (backoff.shouldRetry()) {
+			try {
+				connection.sendStanza(request);
+				backoff.doNotRetry();
+			} catch (NotConnectedException | InterruptedException e) {
+				logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
+				backoff.errorOccured();
+			}
 		}
 	}
 

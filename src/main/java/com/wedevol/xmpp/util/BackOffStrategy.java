@@ -1,12 +1,16 @@
 package com.wedevol.xmpp.util;
 
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Util class for back off strategy
  */
 
 public class BackOffStrategy {
+	
+	private static final Logger logger = Logger.getLogger(BackOffStrategy.class.getName());
 
 	public static final int DEFAULT_RETRIES = 3;
 	public static final long DEFAULT_WAIT_TIME_IN_MILLI = 1000;
@@ -50,8 +54,7 @@ public class BackOffStrategy {
 	public void errorOccured() {
 		numberOfTriesLeft--;
 		if (!shouldRetry()) {
-			System.out.println("Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: "
-					+ timeToWait + "ms.");
+			logger.log(Level.INFO, "Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
 		}
 		waitUntilNextTry();
 		timeToWait *= 2;
@@ -63,7 +66,7 @@ public class BackOffStrategy {
 		try {
 			Thread.sleep(timeToWait);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			logger.log(Level.SEVERE, "Error waiting until next try for the backoff strategy.", e);
 		}
 	}
 

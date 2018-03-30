@@ -42,8 +42,7 @@ public class BackOffStrategy {
 	public void errorOccured2() throws Exception {
 		numberOfTriesLeft--;
 		if (!shouldRetry()) {
-			throw new Exception("Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: "
-					+ timeToWait + "ms.");
+			throw new Exception("Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
 		}
 		waitUntilNextTry();
 		timeToWait *= 2;

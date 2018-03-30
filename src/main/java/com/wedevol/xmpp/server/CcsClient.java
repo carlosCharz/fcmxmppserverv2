@@ -1,6 +1,9 @@
 package com.wedevol.xmpp.server;
 
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.SSLContext;
 
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.ConnectionListener;
@@ -55,7 +58,7 @@ public class CcsClient implements StanzaListener {
 
 	public static CcsClient getInstance() {
 		if (ccsInstance == null) {
-			throw new IllegalStateException("You have to prepare the client first");
+			throw new IllegalStateException("You have to prepare the client first.");
 		}
 		return ccsInstance;
 	}
@@ -70,12 +73,11 @@ public class CcsClient implements StanzaListener {
 	}
 	
 	private CcsClient() {
-		// Add FCMPacketExtension
+		// Add FCM Packet Extension Provider
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
 				new ExtensionElementProvider<FcmPacketExtension>() {
 					@Override
-					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth) 
-							throws XmlPullParserException, IOException, SmackException {
+					public FcmPacketExtension parse(XmlPullParser parser, int initialDepth) throws XmlPullParserException, IOException, SmackException {
 						final String json = parser.nextText();
 						return new FcmPacketExtension(json);
 					}
@@ -86,27 +88,39 @@ public class CcsClient implements StanzaListener {
 		this();
 		this.apiKey = apiKey;
 		this.debuggable = debuggable;
-		this.username = projectId + "@" + Util.FCM_SERVER_CONNECTION;
+		this.username = projectId + "@" + Util.FCM_SERVER_AUTH_CONNECTION;
 	}
 
 	/**
 	 * Connects to FCM Cloud Connection Server using the supplied credentials
+	 * @throws NoSuchAlgorithmException 
+	 * @throws KeyManagementException 
 	 */
-	public void connect() throws XMPPException, SmackException, IOException, InterruptedException {
+	public void connect() throws XMPPException, SmackException, IOException, InterruptedException, NoSuchAlgorithmException, KeyManagementException {
 		logger.log(Level.INFO, "Initiating connection ...");
 		
 		// Set connection draining to false when there is a new connection
 		isConnectionDraining = false;
 
+		// create connection configuration
+		XMPPTCPConnection.setUseStreamManagementResumptionDefault(true);
+		XMPPTCPConnection.setUseStreamManagementDefault(true);
+		
+		final SSLContext sslContext = SSLContext.getInstance("TLS");
+		sslContext.init(null, null, new SecureRandom());
+		
 		final XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
+		logger.log(Level.INFO, "Connecting to the server ...");
 		config.setXmppDomain("FCM XMPP Client Connection Server");
 		config.setHost(Util.FCM_SERVER);
 		config.setPort(Util.FCM_PORT);
-		config.setSecurityMode(SecurityMode.ifpossible);
 		config.setSendPresence(false);
-		config.setSocketFactory(SSLSocketFactory.getDefault());
+		config.setSecurityMode(SecurityMode.ifpossible);
 		config.setDebuggerEnabled(debuggable); // launch a window with info about packets sent and received
-
+		config.setCompressionEnabled(true);
+		config.setSocketFactory(sslContext.getSocketFactory());
+		config.setCustomSSLContext(sslContext);
+		
 		// Create the connection
 		connection = new XMPPTCPConnection(config.build());
 
@@ -119,41 +133,43 @@ public class CcsClient implements StanzaListener {
 		// Disable Roster at login
 		Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
 		
-		// Check SASL authentication
-		logger.log(Level.INFO, "SASL PLAIN authentication enabled? " + SASLAuthentication.isSaslMechanismRegistered("PLAIN"));
-		SASLAuthentication.unBlacklistSASLMechanism("PLAIN");
+		// Security checks
+		SASLAuthentication.unBlacklistSASLMechanism("PLAIN"); // FCM CCS requires a SASL PLAIN authentication mechanism using
 		SASLAuthentication.blacklistSASLMechanism("DIGEST-MD5");
+		logger.log(Level.INFO, "SASL PLAIN authentication enabled ? " + SASLAuthentication.isSaslMechanismRegistered("PLAIN"));
+		logger.log(Level.INFO, "Is compression enabled ? " + connection.isUsingCompression());
+		logger.log(Level.INFO, "Is the connection secure ? " + connection.isSecureConnection());
 
 		// Handle reconnection and connection errors
 		connection.addConnectionListener(new ConnectionListener() {
 
 			@Override
 			public void reconnectionSuccessful() {
-				logger.log(Level.INFO, "Reconnection successful ...");
+				logger.log(Level.INFO, "Reconnection successful.");
 				// TODO: handle the reconnecting successful
 			}
 
 			@Override
 			public void reconnectionFailed(Exception e) {
-				logger.log(Level.INFO, "Reconnection failed: ", e.getMessage());
+				logger.log(Level.INFO, "Reconnection failed!", e.getMessage());
 				// TODO: handle the reconnection failed
 			}
 
 			@Override
 			public void reconnectingIn(int seconds) {
-				logger.log(Level.INFO, "Reconnecting in %d secs", seconds);
+				logger.log(Level.INFO, "Reconnecting in " + seconds + " ...");
 				// TODO: handle the reconnecting in
 			}
 
 			@Override
 			public void connectionClosedOnError(Exception e) {
-				logger.log(Level.INFO, "Connection closed on error");
+				logger.log(Level.INFO, "Connection closed on error.");
 				// TODO: handle the connection closed on error
 			}
 
 			@Override
 			public void connectionClosed() {
-				logger.log(Level.INFO, "Connection closed. The current connectionDraining flag is: %s.", isConnectionDraining);
+				logger.log(Level.INFO, "Connection closed. The current connectionDraining flag is: " + isConnectionDraining);
 				if (isConnectionDraining) {
 					reconnect();
 				}
@@ -161,13 +177,13 @@ public class CcsClient implements StanzaListener {
 
 			@Override
 			public void authenticated(XMPPConnection arg0, boolean arg1) {
-				logger.log(Level.INFO, "User authenticated");
+				logger.log(Level.INFO, "User authenticated.");
 				// TODO: handle the authentication
 			}
 
 			@Override
 			public void connected(XMPPConnection arg0) {
-				logger.log(Level.INFO, "Connection established");
+				logger.log(Level.INFO, "Connection established.");
 				// TODO: handle the connection
 			}
 		});
@@ -199,16 +215,16 @@ public class CcsClient implements StanzaListener {
 				connect();
 				resendPendingMessages();
 				backoff.doNotRetry();
-			} catch (XMPPException | SmackException | IOException | InterruptedException e) {
-				logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message");
+			} catch (XMPPException | SmackException | IOException | InterruptedException | KeyManagementException | NoSuchAlgorithmException e) {
+				logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message.");
 				backoff.errorOccured();
 			}
 		}
 	}
 	
 	private void resendPendingMessages() {
-		logger.log(Level.INFO, "Sending pending messages through the new connection");
-		logger.log(Level.INFO, "Pending messages size: {}", pendingMessages.size());
+		logger.log(Level.INFO, "Sending pending messages through the new connection.");
+		logger.log(Level.INFO, "Pending messages size: " + pendingMessages.size());
 		final Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
 		for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
 	        sendPacket(message.getKey(), message.getValue());
@@ -307,22 +323,22 @@ public class CcsClient implements StanzaListener {
 		final String errorCode = (String) jsonMap.get("error");
 
 		if (errorCode == null) {
-			logger.log(Level.INFO, "Received null FCM Error Code");
+			logger.log(Level.INFO, "Received null FCM Error Code.");
 			return;
 		}
 
 		switch (errorCode) {
 		case "INVALID_JSON":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "BAD_REGISTRATION":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "DEVICE_UNREGISTERED":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "BAD_ACK":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "SERVICE_UNAVAILABLE":
 			handleServerFailure(jsonMap);
@@ -331,13 +347,14 @@ public class CcsClient implements StanzaListener {
 			handleServerFailure(jsonMap);
 			break;
 		case "DEVICE_MESSAGE_RATE_EXCEEDED":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "TOPICS_MESSAGE_RATE_EXCEEDED":
-			handleUnrecoverableFailure(jsonMap);
+			handleDeviceError(jsonMap);
 			break;
 		case "CONNECTION_DRAINING":
-			handleConnectionDrainingFailure();
+			logger.log(Level.INFO, "Connection draining from Nack ...");
+			handleConnectionDrainingError();
 			break;
 		default:
 			logger.log(Level.INFO, "Received unknown FCM Error Code: " + errorCode);
@@ -358,7 +375,7 @@ public class CcsClient implements StanzaListener {
 		final String controlType = (String) jsonMap.get("control_type");
 
 		if (controlType.equals("CONNECTION_DRAINING")) {
-			handleConnectionDrainingFailure();
+			handleConnectionDrainingError();
 		} else {
 			logger.log(Level.INFO, "Received unknown FCM Control message: " + controlType);
 		}
@@ -370,12 +387,12 @@ public class CcsClient implements StanzaListener {
 
 	}
 
-	private void handleUnrecoverableFailure(Map<String, Object> jsonMap) {
+	private void handleDeviceError(Map<String, Object> jsonMap) {
 		// TODO: handle the unrecoverable failure
-		logger.log(Level.INFO, "Unrecoverable error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
+		logger.log(Level.INFO, "Device error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
 	}
 
-	private void handleConnectionDrainingFailure() {
+	private void handleConnectionDrainingError() {
 		logger.log(Level.INFO, "FCM Connection is draining!");
 		isConnectionDraining = true;
 	}
@@ -401,7 +418,7 @@ public class CcsClient implements StanzaListener {
 				connection.sendStanza(request);
 				backoff.doNotRetry();
 			} catch (NotConnectedException | InterruptedException e) {
-				logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: {}", request.toXML());
+				logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: " + request.toXML());
 				backoff.errorOccured();
 			}
 		}

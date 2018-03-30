@@ -1,6 +1,8 @@
 package com.wedevol.xmpp;
 
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -31,7 +33,7 @@ public class EntryPoint {
 
 		try {
 			ccsClient.connect();
-		} catch (XMPPException | InterruptedException e) {
+		} catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException e) {
 			logger.log(Level.SEVERE, "Error trying to connect.", e);
 		}
 

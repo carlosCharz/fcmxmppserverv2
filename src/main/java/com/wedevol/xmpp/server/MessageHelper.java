@@ -9,7 +9,7 @@ import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 
 /**
- * Helper for the transformation of JSON messages to attribute maps and vice versa in the XMPP Server
+ * Mapper for the transformation of JSON messages to attribute maps and vice versa in the XMPP Server
  */
 
 public class MessageHelper {
@@ -80,10 +80,29 @@ public class MessageHelper {
 	 */
 	@SuppressWarnings("unchecked")
 	public static CcsInMessage createCcsInMessage(Map<String, Object> jsonMap) {
-		final String from = jsonMap.get("from").toString();
-		final String category = jsonMap.get("category").toString(); // package name of the app that sent this message
-		final String messageId = jsonMap.get("message_id").toString(); // unique id for this message
-		final Map<String, String> dataPayload = (Map<String, String>) jsonMap.get("data");
+		String from = null;
+		String category = null;
+		String messageId = null;
+		Map<String, String> dataPayload = null;
+
+		if (jsonMap.get("from") != null) {
+			from = jsonMap.get("from").toString();
+		}
+
+		// Package name of the application that sent this message
+		if (jsonMap.get("category") != null) {
+			category = jsonMap.get("category").toString();
+		}
+
+		// Unique message id
+		if (jsonMap.get("message_id") != null) {
+			messageId = jsonMap.get("message_id").toString();
+		}
+
+		if (jsonMap.get("data") != null) {
+			dataPayload = (Map<String, String>) jsonMap.get("data");
+		}
+
 		final CcsInMessage msg = new CcsInMessage(from, category, messageId, dataPayload);
 		return msg;
 	}

@@ -15,6 +15,7 @@ import javax.net.ssl.SSLContext;
 
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.ConnectionListener;
+import org.jivesoftware.smack.ReconnectionListener;
 import org.jivesoftware.smack.ReconnectionManager;
 import org.jivesoftware.smack.SASLAuthentication;
 import org.jivesoftware.smack.SmackException;
@@ -44,35 +45,18 @@ import com.wedevol.xmpp.util.Util;
  * Sample Smack implementation of a client for FCM Cloud Connection Server. Most of it has been taken more or less
  * verbatim from Google's documentation: https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref
  */
-public class CcsClient implements StanzaListener {
+public class CcsClient implements StanzaListener, ReconnectionListener, ConnectionListener {
 
 	private static final Logger logger = Logger.getLogger(CcsClient.class.getName());
 
-	private static CcsClient ccsInstance = null;
 	private XMPPTCPConnection connection;
 	private String apiKey = null;
 	private boolean debuggable = false;
 	private String username = null;
 	private Boolean isConnectionDraining = false;
 	private final Map<String, String> pendingMessages = new ConcurrentHashMap<>();
-
-	public static CcsClient getInstance() {
-		if (ccsInstance == null) {
-			throw new IllegalStateException("You have to prepare the client first.");
-		}
-		return ccsInstance;
-	}
-
-	public static CcsClient prepareCcsClient(String projectId, String apiKey, boolean debuggable) {
-		synchronized (CcsClient.class) {
-			if (ccsInstance == null) {
-				ccsInstance = new CcsClient(projectId, apiKey, debuggable);
-			}
-		}
-		return ccsInstance;
-	}
 	
-	private CcsClient() {
+	public CcsClient(String projectId, String apiKey, boolean debuggable) {
 		// Add FCM Packet Extension Provider
 		ProviderManager.addExtensionProvider(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE,
 				new ExtensionElementProvider<FcmPacketExtension>() {
@@ -82,10 +66,6 @@ public class CcsClient implements StanzaListener {
 						return new FcmPacketExtension(json);
 					}
 				});
-	}
-
-	private CcsClient(String projectId, String apiKey, boolean debuggable) {
-		this();
 		this.apiKey = apiKey;
 		this.debuggable = debuggable;
 		this.username = projectId + "@" + Util.FCM_SERVER_AUTH_CONNECTION;
@@ -127,8 +107,9 @@ public class CcsClient implements StanzaListener {
 		// Connect
 		connection.connect();
 
-		// Enable automatic reconnection
+		// Enable automatic reconnection and add the listener (if not, remove the the listener, the interface and the override methods)
 		ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection();
+		ReconnectionManager.getInstanceFor(connection).addReconnectionListener(this);
 		
 		// Disable Roster at login
 		Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
@@ -140,53 +121,8 @@ public class CcsClient implements StanzaListener {
 		logger.log(Level.INFO, "Is compression enabled ? " + connection.isUsingCompression());
 		logger.log(Level.INFO, "Is the connection secure ? " + connection.isSecureConnection());
 
-		// Handle reconnection and connection errors
-		connection.addConnectionListener(new ConnectionListener() {
-
-			@Override
-			public void reconnectionSuccessful() {
-				logger.log(Level.INFO, "Reconnection successful.");
-				// TODO: handle the reconnecting successful
-			}
-
-			@Override
-			public void reconnectionFailed(Exception e) {
-				logger.log(Level.INFO, "Reconnection failed!", e.getMessage());
-				// TODO: handle the reconnection failed
-			}
-
-			@Override
-			public void reconnectingIn(int seconds) {
-				logger.log(Level.INFO, "Reconnecting in " + seconds + " ...");
-				// TODO: handle the reconnecting in
-			}
-
-			@Override
-			public void connectionClosedOnError(Exception e) {
-				logger.log(Level.INFO, "Connection closed on error.");
-				// TODO: handle the connection closed on error
-			}
-
-			@Override
-			public void connectionClosed() {
-				logger.log(Level.INFO, "Connection closed. The current connectionDraining flag is: " + isConnectionDraining);
-				if (isConnectionDraining) {
-					reconnect();
-				}
-			}
-
-			@Override
-			public void authenticated(XMPPConnection arg0, boolean arg1) {
-				logger.log(Level.INFO, "User authenticated.");
-				// TODO: handle the authentication
-			}
-
-			@Override
-			public void connected(XMPPConnection arg0) {
-				logger.log(Level.INFO, "Connection established.");
-				// TODO: handle the connection
-			}
-		});
+		// Handle connection errors
+		connection.addConnectionListener(this);
 
 		// Handle incoming packets and reject messages that are not from FCM CCS
 		connection.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
@@ -204,22 +140,6 @@ public class CcsClient implements StanzaListener {
 
 		connection.login(username, apiKey);
 		logger.log(Level.INFO, "User logged in: " + username);
-	}
-
-	public synchronized void reconnect() {
-		logger.log(Level.INFO, "Initiating reconnection ...");
-		final BackOffStrategy backoff = new BackOffStrategy(5, 1000);
-		while (backoff.shouldRetry()) {
-			try {
-				// TODO: use exponential back-off!
-				connect();
-				resendPendingMessages();
-				backoff.doNotRetry();
-			} catch (XMPPException | SmackException | IOException | InterruptedException | KeyManagementException | NoSuchAlgorithmException e) {
-				logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message.");
-				backoff.errorOccured();
-			}
-		}
 	}
 	
 	private void resendPendingMessages() {
@@ -398,6 +318,86 @@ public class CcsClient implements StanzaListener {
 	}
 	
 	/**
+	 * Remove the message from the pending messages list
+	 */
+	private void removeMessageFromPendingMessages(Map<String, Object> jsonMap) {
+		// Get the message_id attribute
+		final String messageId = (String) jsonMap.get("message_id");
+		if (messageId != null) {
+			// Remove the messageId from the pending messages list
+			pendingMessages.remove(messageId);
+		}
+	}
+	
+	private void onUserAuthentication() {
+		isConnectionDraining = false;
+		resendPendingMessages();
+	}
+	
+	/**
+	 * ========================================================================
+	 * 
+	 * API Helper/ Accessor methods:
+	 * 
+	 * These are methods that implementers can use, call, or override.
+	 * 
+	 * Help give the implementer more control/ customization.
+	 * ========================================================================
+	 */
+
+	/**
+	 * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()} returns true
+	 */
+	@Override
+	public void reconnectionFailed(Exception e) {
+		logger.log(Level.INFO, "Reconnection failed!", e.getMessage());
+	}
+
+	/**
+	 * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()} returns true
+	 */
+	@Override
+	public void reconnectingIn(int seconds) {
+		logger.log(Level.INFO, "Reconnecting in " + seconds + " ...");
+	}
+	
+	/**
+	 * This method will be removed in Smack 4.3. Use {@link #connected(XMPPConnection)} or {@link #authenticated(XMPPConnection, boolean)} instead.
+	 */
+	@Deprecated
+	@Override
+	public void reconnectionSuccessful() {
+		logger.log(Level.INFO, "Reconnection successful.");
+	}
+
+	@Override
+	public void connectionClosedOnError(Exception e) {
+		logger.log(Level.INFO, "Connection closed on error.");
+		// TODO: handle the connection closed on error
+	}
+
+	@Override
+	public void connectionClosed() {
+		logger.log(Level.INFO, "Connection closed. The current connectionDraining flag is: " + isConnectionDraining);
+		if (isConnectionDraining) {
+			reconnect();
+		}
+	}
+
+	@Override
+	public void authenticated(XMPPConnection arg0, boolean arg1) {
+		logger.log(Level.INFO, "User authenticated.");
+		// This is the last step after a connection or reconnection
+		onUserAuthentication();
+	}
+
+	@Override
+	public void connected(XMPPConnection arg0) {
+		logger.log(Level.INFO, "Connection established.");
+		// TODO: handle the connection
+	}
+	
+	/**
 	 * Sends a downstream message to FCM
 	 */
 	public void sendPacket(String messageId, String jsonRequest) {
@@ -439,15 +439,19 @@ public class CcsClient implements StanzaListener {
 		}
 	}
 	
-	/**
-	 * Remove the message from the pending messages list
-	 */
-	private void removeMessageFromPendingMessages(Map<String, Object> jsonMap) {
-		// Get the message_id attribute
-		final String messageId = (String) jsonMap.get("message_id");
-		if (messageId != null) {
-			// Remove the messageId from the pending messages list
-			pendingMessages.remove(messageId);
+	public synchronized void reconnect() {
+		logger.log(Level.INFO, "Initiating reconnection ...");
+		final BackOffStrategy backoff = new BackOffStrategy(5, 1000);
+		while (backoff.shouldRetry()) {
+			try {
+				connect();
+				resendPendingMessages();
+				backoff.doNotRetry();
+			} catch (XMPPException | SmackException | IOException | InterruptedException | KeyManagementException | NoSuchAlgorithmException e) {
+				logger.log(Level.INFO, "The notifier server could not reconnect after the connection draining message.");
+				backoff.errorOccured();
+			}
 		}
 	}
+
 }

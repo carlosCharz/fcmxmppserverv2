@@ -20,20 +20,16 @@ import com.wedevol.xmpp.util.Util;
 /**
  * Entry Point class for the XMPP Server
  */
-public class EntryPoint {
+public class EntryPoint extends CcsClient {
 
 	public static final Logger logger = Logger.getLogger(EntryPoint.class.getName());
 
-	public static void main(String[] args) throws SmackException, IOException {
-		final String fcmProjectSenderId = args[0];
-		final String fcmServerKey = args[1];
-		final String toRegId = args[2];
-
-		final CcsClient ccsClient = CcsClient.prepareCcsClient(fcmProjectSenderId, fcmServerKey, true); // true for debugging
+	public EntryPoint(String projectId, String apiKey, boolean debuggable, String toRegId) {
+		super(projectId, apiKey, debuggable);
 
 		try {
-			ccsClient.connect();
-		} catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException e) {
+			connect();
+		} catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException | SmackException | IOException e) {
 			logger.log(Level.SEVERE, "Error trying to connect.", e);
 		}
 
@@ -43,7 +39,7 @@ public class EntryPoint {
 		dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
 		final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
 		final String jsonRequest = MessageHelper.createJsonOutMessage(message);
-		ccsClient.sendPacket(jsonRequest);
+		sendPacket(jsonRequest);
 
 		try {
 			final CountDownLatch latch = new CountDownLatch(1);
@@ -51,5 +47,12 @@ public class EntryPoint {
 		} catch (InterruptedException e) {
 			logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);
 		}
+	}
+
+	public static void main(String[] args) throws SmackException, IOException {
+		final String fcmProjectSenderId = args[0];
+		final String fcmServerKey = args[1];
+		final String toRegId = args[2];
+		new EntryPoint(fcmProjectSenderId, fcmServerKey, false, toRegId);
 	}
 }

@@ -2,7 +2,18 @@
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
 ## [unreleased]
+**Tag**: xmpp_r1_v4
+
+### Added
+- other branch with a better solution for the connection draining until it is fully tested
+
+-------------------------------------------------------------------------------------
+
+## [xmpp_r1_v3] - 2018-04-20
 **Tag**: xmpp_r1_v3
+
+### Modified
+- minor code refactor
 
 -------------------------------------------------------------------------------------
 

@@ -211,14 +211,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
 			sendPacket(messageId, jsonRequest);
 		} else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
-			final String messageId = Util.getUniqueMessageId();
-			// TODO: it should be the user id to be retrieved from the data base
-			final String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
-		    
-		    // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
-			final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-			final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
-		    sendPacket(messageId, jsonRequest);
+			this.handlePacketRecieved(inMessage);
 		}
 	}
 
@@ -379,6 +372,20 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 	public void connected(XMPPConnection arg0) {
 		logger.log(Level.INFO, "Connection established.");
 	}
+	
+	/**
+	 * Called when a custom packet has been received by the server. By default this method just resends the packet.
+	 */
+	 public void handlePacketRecieved(CcsInMessage inMessage) {
+		 final String messageId = Util.getUniqueMessageId();
+		 // TODO: it should be the user id to be retrieved from the data base
+		 final String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
+		    
+		 // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
+		 final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
+		 final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
+		 sendPacket(messageId, jsonRequest);
+	 }
 	
 	/**
 	 * Sends a downstream message to FCM

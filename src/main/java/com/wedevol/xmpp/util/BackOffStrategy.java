@@ -9,83 +9,85 @@ import java.util.logging.Logger;
  */
 
 public class BackOffStrategy {
-	
-	private static final Logger logger = Logger.getLogger(BackOffStrategy.class.getName());
 
-	public static final int DEFAULT_RETRIES = 3;
-	public static final long DEFAULT_WAIT_TIME_IN_MILLI = 1000;
+  private static final Logger logger = Logger.getLogger(BackOffStrategy.class.getName());
 
-	private int numberOfRetries;
-	private int numberOfTriesLeft;
-	private long defaultTimeToWait;
-	private long timeToWait;
-	private Random random = new Random();
+  public static final int DEFAULT_RETRIES = 3;
+  public static final long DEFAULT_WAIT_TIME_IN_MILLI = 1000;
 
-	public BackOffStrategy() {
-		this(DEFAULT_RETRIES, DEFAULT_WAIT_TIME_IN_MILLI);
-	}
+  private int numberOfRetries;
+  private int numberOfTriesLeft;
+  private long defaultTimeToWait;
+  private long timeToWait;
+  private Random random = new Random();
 
-	public BackOffStrategy(int numberOfRetries, long defaultTimeToWait) {
-		this.numberOfRetries = numberOfRetries;
-		this.numberOfTriesLeft = numberOfRetries;
-		this.defaultTimeToWait = defaultTimeToWait;
-		this.timeToWait = defaultTimeToWait;
-	}
+  public BackOffStrategy() {
+    this(DEFAULT_RETRIES, DEFAULT_WAIT_TIME_IN_MILLI);
+  }
 
-	/**
-	 * @return true if there are tries left
-	 */
-	public boolean shouldRetry() {
-		return numberOfTriesLeft > 0;
-	}
+  public BackOffStrategy(int numberOfRetries, long defaultTimeToWait) {
+    this.numberOfRetries = numberOfRetries;
+    this.numberOfTriesLeft = numberOfRetries;
+    this.defaultTimeToWait = defaultTimeToWait;
+    this.timeToWait = defaultTimeToWait;
+  }
 
-	public void errorOccured2() throws Exception {
-		numberOfTriesLeft--;
-		if (!shouldRetry()) {
-			throw new Exception("Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
-		}
-		waitUntilNextTry();
-		timeToWait *= 2;
-		// we add a random time (recommendation from google)
-		timeToWait += random.nextInt(500);
-	}
+  /**
+   * @return true if there are tries left
+   */
+  public boolean shouldRetry() {
+    return numberOfTriesLeft > 0;
+  }
 
-	public void errorOccured() {
-		numberOfTriesLeft--;
-		if (!shouldRetry()) {
-			logger.log(Level.INFO, "Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
-		}
-		waitUntilNextTry();
-		timeToWait *= 2;
-		// we add a random time (google recommendation)
-		timeToWait += random.nextInt(500);
-	}
+  public void errorOccured2() throws Exception {
+    numberOfTriesLeft--;
+    if (!shouldRetry()) {
+      throw new Exception(
+          "Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
+    }
+    waitUntilNextTry();
+    timeToWait *= 2;
+    // we add a random time (recommendation from google)
+    timeToWait += random.nextInt(500);
+  }
 
-	private void waitUntilNextTry() {
-		try {
-			Thread.sleep(timeToWait);
-		} catch (InterruptedException e) {
-			logger.log(Level.SEVERE, "Error waiting until next try for the backoff strategy.", e);
-		}
-	}
+  public void errorOccured() {
+    numberOfTriesLeft--;
+    if (!shouldRetry()) {
+      logger.log(Level.INFO,
+          "Retry Failed: Total of attempts: " + numberOfRetries + ". Total waited time: " + timeToWait + "ms.");
+    }
+    waitUntilNextTry();
+    timeToWait *= 2;
+    // we add a random time (google recommendation)
+    timeToWait += random.nextInt(500);
+  }
 
-	public long getTimeToWait() {
-		return this.timeToWait;
-	}
+  private void waitUntilNextTry() {
+    try {
+      Thread.sleep(timeToWait);
+    } catch (InterruptedException e) {
+      logger.log(Level.SEVERE, "Error waiting until next try for the backoff strategy.", e);
+    }
+  }
 
-	/**
-	 * Use this method when the call was successful otherwise it will continue in an infinite loop
-	 */
-	public void doNotRetry() {
-		numberOfTriesLeft = 0;
-	}
+  public long getTimeToWait() {
+    return this.timeToWait;
+  }
 
-	/**
-	 * Reset back off state. Call this method after successful attempts if you want to reuse the class.
-	 */
-	public void reset() {
-		this.numberOfTriesLeft = numberOfRetries;
-		this.timeToWait = defaultTimeToWait;
-	}
+  /**
+   * Use this method when the call was successful otherwise it will continue in an infinite loop
+   */
+  public void doNotRetry() {
+    numberOfTriesLeft = 0;
+  }
+
+  /**
+   * Reset back off state. Call this method after successful attempts if you want to reuse the class.
+   */
+  public void reset() {
+    this.numberOfTriesLeft = numberOfRetries;
+    this.timeToWait = defaultTimeToWait;
+  }
 
 }

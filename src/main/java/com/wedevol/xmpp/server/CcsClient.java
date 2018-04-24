@@ -28,6 +28,7 @@ import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.sm.predicates.ForEveryStanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.jivesoftware.smackx.ping.PingFailedListener;
 import org.jivesoftware.smackx.ping.PingManager;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
@@ -36,23 +37,36 @@ import org.xmlpull.v1.XmlPullParserException;
 import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 import com.wedevol.xmpp.util.BackOffStrategy;
+import com.wedevol.xmpp.util.MessageMapper;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * Sample Smack implementation of a client for FCM Cloud Connection Server. Most of it has been
- * taken more or less verbatim from Google's documentation:
- * https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref
+ * Class that connects to FCM Cloud Connection Server and handles stanzas (ACK, NACK, upstream,
+ * downstream). Sample Smack implementation of a client for FCM Cloud Connection Server. Most of it
+ * has been taken more or less verbatim from Google's documentation: <a href=
+ * "https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref">https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref</a>
+ * 
+ * @author Charz++
  */
-public class CcsClient implements StanzaListener, ReconnectionListener, ConnectionListener {
+public class CcsClient implements StanzaListener, ReconnectionListener, ConnectionListener, PingFailedListener {
 
   private static final Logger logger = Logger.getLogger(CcsClient.class.getName());
 
-  private XMPPTCPConnection connection;
+  private XMPPTCPConnection xmppConn;
   private String apiKey = null;
   private boolean debuggable = false;
   private String username = null;
   private Boolean isConnectionDraining = false;
-  private final Map<String, String> pendingMessages = new ConcurrentHashMap<>();
+  private final Map<String, String> syncMessages = new ConcurrentHashMap<>(); // messages to sync ack and nack
+  private final Map<String, String> pendingMessages = new ConcurrentHashMap<>(); // messages from backoff failures
+
+  /**
+   * Public constructor for the CCS Client
+   * 
+   * @param projectId
+   * @param apiKey
+   * @param debuggable
+   */
 
   public CcsClient(String projectId, String apiKey, boolean debuggable) {
     // Add FCM Packet Extension Provider
@@ -98,55 +112,61 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     config.setSocketFactory(sslContext.getSocketFactory());
     config.setCustomSSLContext(sslContext);
 
-    connection = new XMPPTCPConnection(config.build()); // Create the connection
+    xmppConn = new XMPPTCPConnection(config.build()); // Create the connection
 
-    connection.connect(); // Connect
+    xmppConn.connect(); // Connect
 
     // Enable automatic reconnection and add the listener (if not, remove the the listener, the
     // interface and the override methods)
-    ReconnectionManager.getInstanceFor(connection).enableAutomaticReconnection();
-    ReconnectionManager.getInstanceFor(connection).addReconnectionListener(this);
+    ReconnectionManager.getInstanceFor(xmppConn).enableAutomaticReconnection();
+    ReconnectionManager.getInstanceFor(xmppConn).addReconnectionListener(this);
 
     // Disable Roster at login (in XMPP the contact list is called a "roster")
-    Roster.getInstanceFor(connection).setRosterLoadedAtLogin(false);
+    Roster.getInstanceFor(xmppConn).setRosterLoadedAtLogin(false);
 
     // Security checks
     SASLAuthentication.unBlacklistSASLMechanism("PLAIN"); // FCM CCS requires a SASL PLAIN authentication mechanism
-                                                          // using
     SASLAuthentication.blacklistSASLMechanism("DIGEST-MD5");
     logger.log(Level.INFO,
         "SASL PLAIN authentication enabled ? " + SASLAuthentication.isSaslMechanismRegistered("PLAIN"));
-    logger.log(Level.INFO, "Is compression enabled ? " + connection.isUsingCompression());
-    logger.log(Level.INFO, "Is the connection secure ? " + connection.isSecureConnection());
+    logger.log(Level.INFO, "Is compression enabled ? " + xmppConn.isUsingCompression());
+    logger.log(Level.INFO, "Is the connection secure ? " + xmppConn.isSecureConnection());
 
     // Handle connection errors
-    connection.addConnectionListener(this);
+    xmppConn.addConnectionListener(this);
 
     // Handle incoming packets and reject messages that are not from FCM CCS
-    connection.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
+    xmppConn.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
     // Log all outgoing packets
-    connection.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()),
-        ForEveryStanza.INSTANCE);
+    xmppConn.addPacketInterceptor(stanza -> logger.log(Level.INFO, "Sent: " + stanza.toXML()), ForEveryStanza.INSTANCE);
 
     // Set the ping interval
-    final PingManager pingManager = PingManager.getInstanceFor(connection);
+    final PingManager pingManager = PingManager.getInstanceFor(xmppConn);
     pingManager.setPingInterval(100);
-    pingManager.registerPingFailedListener(() -> {
-      logger.info("The ping failed, restarting the ping interval again ...");
-      pingManager.setPingInterval(100);
-    });
+    pingManager.registerPingFailedListener(this);
 
-    connection.login(username, apiKey);
+    xmppConn.login(username, apiKey);
     logger.log(Level.INFO, "User logged in: " + username);
   }
 
-  private void resendPendingMessages() {
+  private void sendPendingMessages() {
     logger.log(Level.INFO, "Sending pending messages through the new connection.");
     logger.log(Level.INFO, "Pending messages size: " + pendingMessages.size());
     final Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
     for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
-      sendPacketBasic(message.getValue());
+      pendingMessages.remove(message.getKey());
+      sendDownstreamMessage(message.getKey(), message.getValue());
+    }
+  }
+
+  private void sendPendingForeverSyncMessages() {
+    logger.log(Level.INFO, "Sending pending forever sync messages ...");
+    logger.log(Level.INFO, "Sync messages size: {}", syncMessages.size());
+    final Map<String, String> messagesToResend = new HashMap<>(syncMessages);
+    for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
+      syncMessages.remove(message.getKey());
+      sendDownstreamMessage(message.getKey(), message.getValue());
     }
   }
 
@@ -164,7 +184,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       final Object messageType = jsonMap.get("message_type");
 
       if (messageType == null) { // normal upstream message
-        final CcsInMessage inMessage = MessageHelper.createCcsInMessage(jsonMap);
+        final CcsInMessage inMessage = MessageMapper.createCcsInMessage(jsonMap);
         handleUpstreamMessage(inMessage);
         return;
       }
@@ -177,8 +197,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
           handleNackReceipt(jsonMap);
           break;
         case "receipt":
-          // TODO: handle the delivery receipt. It is when a device confirms that it received a particular
-          // message.
+          // TODO: handle the delivery receipt when a device confirms that it received a particular message.
           break;
         case "control":
           handleControlMessage(jsonMap);
@@ -203,8 +222,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     }
 
     // 1. send ACK to FCM
-    final String ack = MessageHelper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
-    sendPacketBasic(ack);
+    final String ackJsonRequest = MessageMapper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
+    sendAck(ackJsonRequest);
 
     // 2. process and send message
     if (action.equals(Util.BACKEND_ACTION_ECHO)) { // send a message to the sender (user itself)
@@ -212,8 +231,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       final String to = inMessage.getFrom();
 
       final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-      final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
-      sendPacket(messageId, jsonRequest);
+      final String jsonRequest = MessageMapper.createJsonOutMessage(outMessage);
+      sendDownstreamMessage(messageId, jsonRequest);
     } else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
       this.handlePacketRecieved(inMessage);
     }
@@ -223,14 +242,14 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * Handles an ACK message from FCM
    */
   private void handleAckReceipt(Map<String, Object> jsonMap) {
-    removeMessageFromPendingMessages(jsonMap);
+    removeMessageFromSyncMessages(jsonMap);
   }
 
   /**
    * Handles a NACK message from FCM
    */
   private void handleNackReceipt(Map<String, Object> jsonMap) {
-    removeMessageFromPendingMessages(jsonMap);
+    removeMessageFromSyncMessages(jsonMap);
 
     final String errorCode = (String) jsonMap.get("error");
 
@@ -239,37 +258,17 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       return;
     }
 
-    switch (errorCode) {
-      case "INVALID_JSON":
-        handleDeviceError(jsonMap);
-        break;
-      case "BAD_REGISTRATION":
-        handleDeviceError(jsonMap);
-        break;
-      case "DEVICE_UNREGISTERED":
-        handleDeviceError(jsonMap);
-        break;
-      case "BAD_ACK":
-        handleDeviceError(jsonMap);
-        break;
-      case "SERVICE_UNAVAILABLE":
-        handleServerFailure(jsonMap);
-        break;
-      case "INTERNAL_SERVER_ERROR":
-        handleServerFailure(jsonMap);
-        break;
-      case "DEVICE_MESSAGE_RATE_EXCEEDED":
-        handleDeviceError(jsonMap);
-        break;
-      case "TOPICS_MESSAGE_RATE_EXCEEDED":
-        handleDeviceError(jsonMap);
-        break;
-      case "CONNECTION_DRAINING":
-        logger.log(Level.INFO, "Connection draining from Nack ...");
-        handleConnectionDraining();
-        break;
-      default:
-        logger.log(Level.INFO, "Received unknown FCM Error Code: " + errorCode);
+    if (errorCode.equals("INVALID_JSON") || errorCode.equals("BAD_REGISTRATION")
+        || errorCode.equals("DEVICE_UNREGISTERED") || errorCode.equals("BAD_ACK")
+        || errorCode.equals("TOPICS_MESSAGE_RATE_EXCEEDED") || errorCode.equals("DEVICE_MESSAGE_RATE_EXCEEDED")) {
+      logger.log(Level.INFO, "Device error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
+    } else if (errorCode.equals("SERVICE_UNAVAILABLE") || errorCode.equals("INTERNAL_SERVER_ERROR")) {
+      logger.log(Level.INFO, "Server error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
+    } else if (errorCode.equals("CONNECTION_DRAINING")) {
+      logger.log(Level.INFO, "Connection draining from Nack ...");
+      handleConnectionDraining();
+    } else {
+      logger.log(Level.INFO, "Received unknown FCM Error Code: " + errorCode);
     }
   }
 
@@ -286,45 +285,36 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     }
   }
 
-  private void handleServerFailure(Map<String, Object> jsonMap) {
-    // TODO: Resend the message
-    logger.log(Level.INFO, "Server error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
-
-  }
-
-  private void handleDeviceError(Map<String, Object> jsonMap) {
-    logger.log(Level.INFO, "Device error: " + jsonMap.get("error") + " -> " + jsonMap.get("error_description"));
-  }
-
   private void handleConnectionDraining() {
     logger.log(Level.INFO, "FCM Connection is draining!");
     isConnectionDraining = true;
   }
 
   /**
-   * Remove the message from the pending messages list
+   * Remove the message from the sync messages list
    */
-  private void removeMessageFromPendingMessages(Map<String, Object> jsonMap) {
+  private void removeMessageFromSyncMessages(Map<String, Object> jsonMap) {
     final String messageId = (String) jsonMap.get("message_id");
     if (messageId != null) {
-      pendingMessages.remove(messageId); // Remove the messageId from the pending messages list
+      syncMessages.remove(messageId); // Remove the messageId from the sync messages list
     }
   }
 
   private void onUserAuthentication() {
     isConnectionDraining = false;
-    resendPendingMessages();
+    sendPendingMessages();
+    sendPendingForeverSyncMessages();
   }
 
   /**
-   * ========================================================================
+   * ===============================================================================================
    * 
    * API Helper methods:
    * 
-   * These are methods that implementers can use, call, or override.
+   * These are methods that implementers can use, call, or override. Help give the implementer more
+   * control/ customization.
    * 
-   * Help give the implementer more control/ customization.
-   * ========================================================================
+   * ===============================================================================================
    */
 
   /**
@@ -380,6 +370,13 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     logger.log(Level.INFO, "Connection established.");
   }
 
+  @Override
+  public void pingFailed() {
+    logger.log(Level.INFO, "The ping failed, restarting the ping interval again ...");
+    final PingManager pingManager = PingManager.getInstanceFor(xmppConn);
+    pingManager.setPingInterval(100);
+  }
+
   /**
    * Called when a custom packet has been received by the server. By default this method just resends
    * the packet.
@@ -391,32 +388,59 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
     // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
     final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-    final String jsonRequest = MessageHelper.createJsonOutMessage(outMessage);
-    sendPacket(messageId, jsonRequest);
+    final String jsonRequest = MessageMapper.createJsonOutMessage(outMessage);
+    sendDownstreamMessage(messageId, jsonRequest);
   }
 
   /**
    * Sends a downstream message to FCM
    */
-  public void sendPacket(String messageId, String jsonRequest) {
-    pendingMessages.put(messageId, jsonRequest);
+  public void sendDownstreamMessage(String messageId, String jsonRequest) {
+    syncMessages.put(messageId, jsonRequest);
     if (!isConnectionDraining) {
-      sendPacketBasic(jsonRequest);
+      sendDownstreamMessageInternal(messageId, jsonRequest);
     }
   }
 
   /**
    * Sends a downstream message to FCM with back off strategy
    */
-  public void sendPacketBasic(String jsonRequest) {
+  private void sendDownstreamMessageInternal(String messageId, String jsonRequest) {
     final Stanza request = new FcmPacketExtension(jsonRequest).toPacket();
     final BackOffStrategy backoff = new BackOffStrategy();
     while (backoff.shouldRetry()) {
       try {
-        connection.sendStanza(request);
+        xmppConn.sendStanza(request);
         backoff.doNotRetry();
       } catch (NotConnectedException | InterruptedException e) {
-        logger.log(Level.INFO, "The packet could not be sent due to a connection problem. Packet: " + request.toXML());
+        logger.log(Level.INFO,
+            "The packet could not be sent due to a connection problem. Backing off the packet: " + request.toXML());
+        try {
+          backoff.errorOccured2();
+        } catch (Exception e2) { // all the attempts failed
+          syncMessages.remove(messageId);
+          pendingMessages.put(messageId, jsonRequest);
+        }
+      }
+    }
+  }
+
+  /**
+   * Sends an ACK to FCM with back off strategy
+   * 
+   * @param jsonRequest
+   */
+  public void sendAck(String jsonRequest) {
+    logger.log(Level.INFO, "Sending ack");
+    final Stanza packet = new FcmPacketExtension(jsonRequest).toPacket();
+    final BackOffStrategy backoff = new BackOffStrategy();
+    while (backoff.shouldRetry()) {
+      try {
+        xmppConn.sendStanza(packet);
+        backoff.doNotRetry();
+      } catch (NotConnectedException | InterruptedException e) {
+        logger.log(Level.INFO,
+            "The packet could not be sent due to a connection problem. Backing off the packet: " + packet.toXML());
         backoff.errorOccured();
       }
     }
@@ -427,13 +451,13 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * regIds in the "registration_ids" field.
    */
   public void sendBroadcast(CcsOutMessage outMessage, List<String> recipients) {
-    final Map<String, Object> map = MessageHelper.createAttributeMap(outMessage);
+    final Map<String, Object> map = MessageMapper.createAttributeMap(outMessage);
     for (String toRegId : recipients) {
       final String messageId = Util.getUniqueMessageId();
       map.put("message_id", messageId);
       map.put("to", toRegId);
-      final String jsonRequest = MessageHelper.createJsonMessage(map);
-      sendPacket(messageId, jsonRequest);
+      final String jsonRequest = MessageMapper.createJsonMessage(map);
+      sendDownstreamMessage(messageId, jsonRequest);
     }
   }
 
@@ -443,7 +467,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     while (backoff.shouldRetry()) {
       try {
         connect();
-        resendPendingMessages();
+        sendPendingMessages();
+        sendPendingForeverSyncMessages();
         backoff.doNotRetry();
       } catch (XMPPException | SmackException | IOException | InterruptedException | KeyManagementException
           | NoSuchAlgorithmException e) {
@@ -452,5 +477,51 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       }
     }
   }
+
+  /*** BEGIN: Methods for the Manager ***/
+
+  private boolean isConnected() {
+    return xmppConn != null ? xmppConn.isConnected() : false;
+  }
+
+  private boolean isAuthenticated() {
+    return xmppConn != null ? xmppConn.isAuthenticated() : false;
+  }
+
+  public boolean isAlive() {
+    logger.log(Level.INFO,
+        "Connection parameters -> isConnected:" + isConnected() + ", isAuthenticated: " + isAuthenticated());
+    return isConnected() && isAuthenticated();
+  }
+
+  public void disconnectAll() {
+    logger.log(Level.INFO, "Disconnecting all ...");
+    if (xmppConn.isConnected()) {
+      logger.log(Level.INFO, "Detaching all the listeners for the connection.");
+      PingManager.getInstanceFor(xmppConn).unregisterPingFailedListener(this);
+      ReconnectionManager.getInstanceFor(xmppConn).removeReconnectionListener(this);
+      xmppConn.removeAsyncStanzaListener(this);
+      xmppConn.removeConnectionListener(this);
+      xmppConn.removePacketInterceptor(this);
+      xmppConn.removeAllRequestAckPredicates();
+      xmppConn.removeAllStanzaAcknowledgedListeners();
+      xmppConn.removeAllStanzaIdAcknowledgedListeners();
+      xmppConn.removePacketSendingListener(this);
+      xmppConn.removeStanzaAcknowledgedListener(this);
+      xmppConn.removeAllRequestAckPredicates();
+      logger.log(Level.INFO, "Disconnecting the xmpp server from FCM.");
+      xmppConn.disconnect();
+    }
+  }
+
+  public void disconnectGracefully() {
+    logger.log(Level.INFO, "Disconnecting ...");
+    if (xmppConn.isConnected()) {
+      logger.log(Level.INFO, "Disconnecting the xmpp server from FCM");
+      xmppConn.disconnect(); // this method call the onClosed listener because it have not been detached
+    }
+  }
+
+  /*** END: Methods for the REST entry point ***/
 
 }

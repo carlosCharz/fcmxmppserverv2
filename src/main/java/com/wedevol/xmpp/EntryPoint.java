@@ -12,7 +12,7 @@ import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 import com.wedevol.xmpp.server.CcsClient;
-import com.wedevol.xmpp.server.MessageHelper;
+import com.wedevol.xmpp.util.MessageMapper;
 import com.wedevol.xmpp.util.Util;
 
 /**
@@ -37,8 +37,8 @@ public class EntryPoint extends CcsClient {
     final Map<String, String> dataPayload = new HashMap<String, String>();
     dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
     final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
-    final String jsonRequest = MessageHelper.createJsonOutMessage(message);
-    sendPacketBasic(jsonRequest);
+    final String jsonRequest = MessageMapper.createJsonOutMessage(message);
+    sendDownstreamMessage(messageId, jsonRequest);
 
     try {
       final CountDownLatch latch = new CountDownLatch(1);

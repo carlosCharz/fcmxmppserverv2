@@ -1,4 +1,4 @@
-package com.wedevol.xmpp.server;
+package com.wedevol.xmpp.util;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,7 +11,7 @@ import com.wedevol.xmpp.bean.CcsOutMessage;
  * Server
  */
 
-public class MessageHelper {
+public class MessageMapper {
 
   /**
    * Creates a JSON from a FCM outgoing message attributes

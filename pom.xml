@@ -4,7 +4,7 @@
 
 	<groupId>com.wedevol</groupId>
 	<artifactId>xmppserver2</artifactId>
-	<version>0.1.0</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 	<name>FCM XMPP Server</name>
 
@@ -14,6 +14,7 @@
 		<java.version>1.8</java.version>
 		<smack.version>4.2.3</smack.version>
 		<json-simple.version>1.1.1</json-simple.version>
+		<logback.version>1.0.13</logback.version>
 	</properties>
 
 	<dependencies>
@@ -37,6 +38,11 @@
 			<artifactId>json-simple</artifactId>
 			<version>${json-simple.version}</version>
 		</dependency>
+		<dependency>
+        	<groupId>ch.qos.logback</groupId>
+        	<artifactId>logback-classic</artifactId>
+        	<version>${logback.version}</version>
+    	</dependency>
 	</dependencies>
 
 	<build>

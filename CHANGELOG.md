@@ -6,7 +6,10 @@ All notable changes to the fcm xmpp server v2 project will be documented in this
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
-- better logger
+- logback dependency for logging
+
+## Modified
+- change json simple library to jackson fasterxml
 
 -------------------------------------------------------------------------------------
 

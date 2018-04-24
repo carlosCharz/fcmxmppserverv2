@@ -6,10 +6,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 import com.wedevol.xmpp.server.CcsClient;
 import com.wedevol.xmpp.util.MessageMapper;
@@ -17,10 +17,12 @@ import com.wedevol.xmpp.util.Util;
 
 /**
  * Entry Point class for the XMPP Server
+ * 
+ * @author Charz++
  */
 public class EntryPoint extends CcsClient {
 
-  public static final Logger logger = Logger.getLogger(EntryPoint.class.getName());
+  protected static final Logger logger = LoggerFactory.getLogger(EntryPoint.class);
 
   public EntryPoint(String projectId, String apiKey, boolean debuggable, String toRegId) {
     super(projectId, apiKey, debuggable);
@@ -29,7 +31,7 @@ public class EntryPoint extends CcsClient {
       connect();
     } catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException | SmackException
         | IOException e) {
-      logger.log(Level.SEVERE, "Error trying to connect.", e);
+      logger.error("Error trying to connect. Error: {}", e.getMessage());
     }
 
     // Send a sample downstream message to a device
@@ -44,7 +46,7 @@ public class EntryPoint extends CcsClient {
       final CountDownLatch latch = new CountDownLatch(1);
       latch.await();
     } catch (InterruptedException e) {
-      logger.log(Level.SEVERE, "An error occurred while latch was waiting.", e);
+      logger.error("An error occurred while latch was waiting. Error: {}", e.getMessage());
     }
   }
 

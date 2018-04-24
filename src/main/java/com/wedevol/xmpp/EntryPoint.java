@@ -39,7 +39,7 @@ public class EntryPoint extends CcsClient {
     final Map<String, String> dataPayload = new HashMap<String, String>();
     dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
     final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
-    final String jsonRequest = MessageMapper.createJsonOutMessage(message);
+    final String jsonRequest = MessageMapper.toJsonString(message);
     sendDownstreamMessage(messageId, jsonRequest);
 
     try {

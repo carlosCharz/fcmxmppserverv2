@@ -1,23 +1,39 @@
 package com.wedevol.xmpp.util;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 
 /**
  * Mapper for the transformation of JSON messages to attribute maps and vice versa in the XMPP
  * Server
+ * 
+ * @author Charz++
  */
 
 public class MessageMapper {
 
+  private static final Logger logger = LoggerFactory.getLogger(MessageMapper.class);
+  private static ObjectMapper mapper = new ObjectMapper();
+
   /**
    * Creates a JSON from a FCM outgoing message attributes
    */
-  public static String createJsonOutMessage(CcsOutMessage outMessage) {
-    return createJsonMessage(createAttributeMap(outMessage));
+  public static String toJsonString(CcsOutMessage outMessage) {
+    return toJsonString(mapFrom(outMessage));
+  }
+
+  /**
+   * Creates a JSON from a FCM incoming message attributes
+   */
+  public static String toJsonString(CcsInMessage inMessage) {
+    return toJsonString(mapFrom(inMessage));
   }
 
   /**
@@ -28,17 +44,32 @@ public class MessageMapper {
     map.put("message_type", "ack");
     map.put("to", to);
     map.put("message_id", messageId);
-    return createJsonMessage(map);
+    return toJsonString(map);
   }
 
-  public static String createJsonMessage(Map<String, Object> jsonMap) {
-    return JSONValue.toJSONString(jsonMap);
+  public static String toJsonString(Map<String, Object> jsonMap) {
+    try {
+      return mapper.writeValueAsString(jsonMap);
+    } catch (JsonProcessingException e) {
+      logger.error("Error parsing JSON map: {}", jsonMap.values());
+    }
+    return null;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> toMapFromJsonString(String json) {
+    try {
+      return mapper.readValue(json, HashMap.class);
+    } catch (IOException e) {
+      logger.error("Error parsing JSON string: {}", json);
+    }
+    return null;
   }
 
   /**
    * Creates a MAP from a FCM outgoing message attributes
    */
-  public static Map<String, Object> createAttributeMap(CcsOutMessage msg) {
+  public static Map<String, Object> mapFrom(CcsOutMessage msg) {
     final Map<String, Object> map = new HashMap<String, Object>();
     if (msg.getTo() != null) {
       map.put("to", msg.getTo());
@@ -46,7 +77,12 @@ public class MessageMapper {
     if (msg.getMessageId() != null) {
       map.put("message_id", msg.getMessageId());
     }
-    map.put("data", msg.getDataPayload());
+    if (msg.getDataPayload() != null) {
+      map.put("data", msg.getDataPayload());
+    }
+    if (msg.getNotificationPayload() != null) {
+      map.put("notification", msg.getNotificationPayload());
+    }
     if (msg.getCondition() != null) {
       map.put("condition", msg.getCondition());
     }
@@ -68,9 +104,24 @@ public class MessageMapper {
     if (msg.isDryRun() != null && msg.isDryRun()) {
       map.put("dry_run", true);
     }
-    if (msg.getNotificationPayload() != null) {
-      map.put("notification", msg.getNotificationPayload());
+    return map;
+  }
+
+  /**
+   * Creates a MAP from a FCM incoming message attributes
+   */
+  private static Map<String, Object> mapFrom(CcsInMessage msg) {
+    final Map<String, Object> map = new HashMap<String, Object>();
+    if (msg.getFrom() != null) {
+      map.put("from", msg.getFrom());
     }
+    if (msg.getCategory() != null) {
+      map.put("category", msg.getCategory());
+    }
+    if (msg.getMessageId() != null) {
+      map.put("message_id", msg.getMessageId());
+    }
+    map.put("data", msg.getDataPayload());
     return map;
   }
 
@@ -78,7 +129,7 @@ public class MessageMapper {
    * Creates an incoming message according the bean
    */
   @SuppressWarnings("unchecked")
-  public static CcsInMessage createCcsInMessage(Map<String, Object> jsonMap) {
+  public static CcsInMessage ccsInMessageFrom(Map<String, Object> jsonMap) {
     String from = null;
     String category = null;
     String messageId = null;

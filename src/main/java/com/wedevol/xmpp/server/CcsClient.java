@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.net.ssl.SSLContext;
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
@@ -28,8 +29,6 @@ import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.jivesoftware.smackx.ping.PingFailedListener;
 import org.jivesoftware.smackx.ping.PingManager;
-import org.json.simple.JSONValue;
-import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
@@ -172,7 +171,6 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   /**
    * Handle incoming messages
    */
-  @SuppressWarnings("unchecked")
   @Override
   public void processStanza(Stanza packet) {
     logger.info("Processing packet in thread {} - {}", Thread.currentThread().getName(),
@@ -180,34 +178,37 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     logger.info("Received: {}", packet.toXML());
     final FcmPacketExtension fcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
     final String json = fcmPacket.getJson();
-    try {
-      final Map<String, Object> jsonMap = (Map<String, Object>) JSONValue.parseWithException(json);
-      final Object messageType = jsonMap.get("message_type");
+    Optional<Map<String, Object>> jsonMapObject = Optional.ofNullable(MessageMapper.toMapFromJsonString(json));
+    if (!jsonMapObject.isPresent()) {
+      logger.info("Error parsing Packet JSON to JSON String: {}", json);
+      return;
+    }
+    final Map<String, Object> jsonMap = jsonMapObject.get();
+    final Optional<Object> messageTypeObj = Optional.ofNullable(jsonMap.get("message_type"));
 
-      if (messageType == null) { // normal upstream message
-        final CcsInMessage inMessage = MessageMapper.createCcsInMessage(jsonMap);
-        handleUpstreamMessage(inMessage);
-        return;
-      }
+    if (!messageTypeObj.isPresent()) {
+      // Normal upstream message from a device client
+      CcsInMessage inMessage = MessageMapper.ccsInMessageFrom(jsonMap);
+      handleUpstreamMessage(inMessage);
+      return;
+    }
 
-      switch (messageType.toString()) {
-        case "ack":
-          handleAckReceipt(jsonMap);
-          break;
-        case "nack":
-          handleNackReceipt(jsonMap);
-          break;
-        case "receipt":
-          // TODO: handle the delivery receipt when a device confirms that it received a particular message.
-          break;
-        case "control":
-          handleControlMessage(jsonMap);
-          break;
-        default:
-          logger.info("Received unknown FCM message type: {}", messageType.toString());
-      }
-    } catch (ParseException e) {
-      logger.info("Error parsing JSON: {}. Error: {}", json, e.getMessage());
+    final String messageType = messageTypeObj.get().toString();
+    switch (messageType) {
+      case "ack":
+        handleAckReceipt(jsonMap);
+        break;
+      case "nack":
+        handleNackReceipt(jsonMap);
+        break;
+      case "receipt":
+        // TODO: handle the delivery receipt when a device confirms that it received a particular message.
+        break;
+      case "control":
+        handleControlMessage(jsonMap);
+        break;
+      default:
+        logger.info("Received unknown FCM message type: {}", messageType);
     }
 
   }
@@ -217,10 +218,12 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    */
   private void handleUpstreamMessage(CcsInMessage inMessage) {
     // The custom 'action' payload attribute defines what the message action is about.
-    final String action = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_ACTION);
-    if (action == null) {
+    final Optional<String> actionObj =
+        Optional.ofNullable(inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_ACTION));
+    if (!actionObj.isPresent()) {
       throw new IllegalStateException("Action must not be null! Options: 'ECHO', 'MESSAGE'");
     }
+    final String action = actionObj.get();
 
     // 1. send ACK to FCM
     final String ackJsonRequest = MessageMapper.createJsonAck(inMessage.getFrom(), inMessage.getMessageId());
@@ -232,7 +235,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       final String to = inMessage.getFrom();
 
       final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-      final String jsonRequest = MessageMapper.createJsonOutMessage(outMessage);
+      final String jsonRequest = MessageMapper.toJsonString(outMessage);
       sendDownstreamMessage(messageId, jsonRequest);
     } else if (action.equals(Util.BACKEND_ACTION_MESSAGE)) { // send a message to the recipient
       this.handlePacketRecieved(inMessage);
@@ -252,13 +255,12 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   private void handleNackReceipt(Map<String, Object> jsonMap) {
     removeMessageFromSyncMessages(jsonMap);
 
-    final String errorCode = (String) jsonMap.get("error");
-
-    if (errorCode == null) {
-      logger.info("Received null FCM Error Code.");
+    Optional<String> errorCodeObj = Optional.ofNullable((String) jsonMap.get("error"));
+    if (!errorCodeObj.isPresent()) {
+      logger.error("Received null FCM Error Code.");
       return;
     }
-
+    final String errorCode = errorCodeObj.get();
     if (errorCode.equals("INVALID_JSON") || errorCode.equals("BAD_REGISTRATION")
         || errorCode.equals("DEVICE_UNREGISTERED") || errorCode.equals("BAD_ACK")
         || errorCode.equals("TOPICS_MESSAGE_RATE_EXCEEDED") || errorCode.equals("DEVICE_MESSAGE_RATE_EXCEEDED")) {
@@ -295,9 +297,9 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * Remove the message from the sync messages list
    */
   private void removeMessageFromSyncMessages(Map<String, Object> jsonMap) {
-    final String messageId = (String) jsonMap.get("message_id");
-    if (messageId != null) {
-      syncMessages.remove(messageId); // Remove the messageId from the sync messages list
+    final Optional<String> messageIdObj = Optional.ofNullable((String) jsonMap.get("message_id"));
+    if (messageIdObj.isPresent()) {
+      syncMessages.remove(messageIdObj.get()); // Remove the messageId from the sync messages list
     }
   }
 
@@ -389,7 +391,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
     // TODO: handle the data payload sent to the client device. Here, I just resend the incoming one.
     final CcsOutMessage outMessage = new CcsOutMessage(to, messageId, inMessage.getDataPayload());
-    final String jsonRequest = MessageMapper.createJsonOutMessage(outMessage);
+    final String jsonRequest = MessageMapper.toJsonString(outMessage);
     sendDownstreamMessage(messageId, jsonRequest);
   }
 
@@ -415,7 +417,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         xmppConn.sendStanza(request);
         backoff.doNotRetry();
       } catch (NotConnectedException | InterruptedException e) {
-        logger.info("The packet could not be sent due to a connection problem. Backing off the packet: {}", request.toXML());
+        logger.info("The packet could not be sent due to a connection problem. Backing off the packet: {}",
+            request.toXML());
         try {
           backoff.errorOccured2();
         } catch (Exception e2) { // all the attempts failed
@@ -440,8 +443,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         xmppConn.sendStanza(packet);
         backoff.doNotRetry();
       } catch (NotConnectedException | InterruptedException e) {
-        logger.info(
-            "The packet could not be sent due to a connection problem. Backing off the packet: {}", packet.toXML());
+        logger.info("The packet could not be sent due to a connection problem. Backing off the packet: {}",
+            packet.toXML());
         backoff.errorOccured();
       }
     }
@@ -452,12 +455,12 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * regIds in the "registration_ids" field.
    */
   public void sendBroadcast(CcsOutMessage outMessage, List<String> recipients) {
-    final Map<String, Object> map = MessageMapper.createAttributeMap(outMessage);
+    final Map<String, Object> map = MessageMapper.mapFrom(outMessage);
     for (String toRegId : recipients) {
       final String messageId = Util.getUniqueMessageId();
       map.put("message_id", messageId);
       map.put("to", toRegId);
-      final String jsonRequest = MessageMapper.createJsonMessage(map);
+      final String jsonRequest = MessageMapper.toJsonString(map);
       sendDownstreamMessage(messageId, jsonRequest);
     }
   }

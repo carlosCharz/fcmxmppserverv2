@@ -137,7 +137,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     xmppConn.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
     // Log all outgoing packets
-    xmppConn.addPacketInterceptor(stanza -> logger.info("Sent: {}", stanza.toXML()), ForEveryStanza.INSTANCE);
+    xmppConn.addStanzaInterceptor(stanza -> logger.info("Sent: {}", stanza.toXML()), ForEveryStanza.INSTANCE);
 
     // Set the ping interval
     final PingManager pingManager = PingManager.getInstanceFor(xmppConn);
@@ -505,11 +505,11 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
       ReconnectionManager.getInstanceFor(xmppConn).removeReconnectionListener(this);
       xmppConn.removeAsyncStanzaListener(this);
       xmppConn.removeConnectionListener(this);
-      xmppConn.removePacketInterceptor(this);
+      xmppConn.removeStanzaInterceptor(this);
       xmppConn.removeAllRequestAckPredicates();
       xmppConn.removeAllStanzaAcknowledgedListeners();
       xmppConn.removeAllStanzaIdAcknowledgedListeners();
-      xmppConn.removePacketSendingListener(this);
+      xmppConn.removeStanzaSendingListener(this);
       xmppConn.removeStanzaAcknowledgedListener(this);
       xmppConn.removeAllRequestAckPredicates();
       logger.info("Disconnecting the xmpp server from FCM.");

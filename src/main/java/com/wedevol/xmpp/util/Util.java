@@ -39,5 +39,13 @@ public class Util {
         new StringBuilder().append("m-").append(formatted).append("-").append(randomUUID.toString()).toString();
     return messageId;
   }
+  
+  public static Long getCurrentUnixTime() {
+    return getCurrentTimeMillis() / 1000L;
+  }
+  
+  public static Long getCurrentTimeMillis() {
+    return System.currentTimeMillis();
+  }
 
 }

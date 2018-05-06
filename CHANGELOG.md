@@ -2,10 +2,20 @@
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
 ## [unreleased]
-**Tag**: xmpp_r1_v7
+**Tag**: xmpp_r1_v8
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
+
+-------------------------------------------------------------------------------------
+
+## [xmpp_r1_v7] - 2018-05-0
+**Tag**: xmpp_r1_v7
+
+### Modified
+- refactor the syncList to handle timestmaps
+- send pending and sync messages in order
+- send all the queued sync messages that occurred before 5 seconds (5000 ms) ago
 
 -------------------------------------------------------------------------------------
 

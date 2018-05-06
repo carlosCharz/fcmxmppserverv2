@@ -4,11 +4,16 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.ConnectionListener;
@@ -35,6 +40,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
+import com.wedevol.xmpp.bean.Message;
 import com.wedevol.xmpp.util.BackOffStrategy;
 import com.wedevol.xmpp.util.MessageMapper;
 import com.wedevol.xmpp.util.Util;
@@ -56,8 +62,12 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   private boolean debuggable = false;
   private String username = null;
   private Boolean isConnectionDraining = false;
-  private final Map<String, String> syncMessages = new ConcurrentHashMap<>(); // messages to sync ack and nack
-  private final Map<String, String> pendingMessages = new ConcurrentHashMap<>(); // messages from backoff failures
+
+  // downstream messages to sync with acks and nacks
+  private final Map<String, Message> syncMessages = new ConcurrentHashMap<>();
+
+  // messages from backoff failures
+  private final Map<String, Message> pendingMessages = new ConcurrentHashMap<>();
 
   /**
    * Public constructor for the CCS Client
@@ -148,24 +158,50 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     logger.info("User logged in: {}", username);
   }
 
-  private void sendPendingMessages() {
-    logger.info("Sending pending messages through the new connection.");
+  /**
+   * Sends all the queued pending messages
+   */
+  private void sendQueuedPendingMessages(Map<String, Message> pendingMessagesToResend) {
+    logger.info("Sending queued pending messages through the new connection.");
     logger.info("Pending messages size: {}", pendingMessages.size());
-    final Map<String, String> messagesToResend = new HashMap<>(pendingMessages);
-    for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
-      pendingMessages.remove(message.getKey());
-      sendDownstreamMessage(message.getKey(), message.getValue());
-    }
+    final Map<String, Message> filtered = pendingMessagesToResend.entrySet().stream()
+        .filter(entry -> entry.getValue() != null).sorted(compareTimestampsAscending())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    logger.info("Filtered pending messages size: {}", filtered.size());
+    filtered.entrySet().stream().forEach(entry -> {
+      final String messageId = entry.getKey();
+      final Message pendingMessage = entry.getValue();
+      pendingMessages.remove(messageId);
+      sendDownstreamMessage(messageId, pendingMessage.getJsonRequest());
+    });
   }
 
-  private void sendPendingForeverSyncMessages() {
-    logger.info("Sending pending forever sync messages ...");
+  /**
+   * Sends all the queued sync messages that occurred before 5 seconds (1000 ms) ago. With this we try
+   * to send those lost messages that we have not received ack nor nack.
+   */
+  private void sendQueuedSyncMessages(Map<String, Message> syncMessagesToResend) {
+    logger.info("Sending queued sync messages ...");
     logger.info("Sync messages size: {}", syncMessages.size());
-    final Map<String, String> messagesToResend = new HashMap<>(syncMessages);
-    for (Map.Entry<String, String> message : messagesToResend.entrySet()) {
-      syncMessages.remove(message.getKey());
-      sendDownstreamMessage(message.getKey(), message.getValue());
-    }
+    final Map<String, Message> filtered =
+        syncMessagesToResend.entrySet().stream().filter(isOldSyncMessageQueued()).sorted(compareTimestampsAscending())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    logger.info("Filtered sync messages size: {}", filtered.size());
+    filtered.entrySet().stream().forEach(entry -> {
+      final String messageId = entry.getKey();
+      final Message syncMessage = entry.getValue();
+      removeMessageFromSyncMessages(messageId);
+      sendDownstreamMessage(messageId, syncMessage.getJsonRequest());
+    });
+  }
+
+  private Predicate<Entry<String, Message>> isOldSyncMessageQueued() {
+    return entry -> (entry.getValue() != null)
+        && (entry.getValue().getTimestamp() < Util.getCurrentTimeMillis() - 5000);
+  }
+
+  private Comparator<Entry<String, Message>> compareTimestampsAscending() {
+    return (e1, e2) -> e1.getValue().getTimestamp().compareTo(e2.getValue().getTimestamp());
   }
 
   /**
@@ -293,20 +329,24 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     isConnectionDraining = true;
   }
 
-  /**
-   * Remove the message from the sync messages list
-   */
   private void removeMessageFromSyncMessages(Map<String, Object> jsonMap) {
     final Optional<String> messageIdObj = Optional.ofNullable((String) jsonMap.get("message_id"));
     if (messageIdObj.isPresent()) {
-      syncMessages.remove(messageIdObj.get()); // Remove the messageId from the sync messages list
+      removeMessageFromSyncMessages(messageIdObj.get());
     }
+  }
+
+  private void putMessageToSyncMessages(String messageId, String jsonRequest) {
+    syncMessages.put(messageId, Message.from(jsonRequest));
+  }
+
+  public void removeMessageFromSyncMessages(String messageId) {
+    syncMessages.remove(messageId);
   }
 
   private void onUserAuthentication() {
     isConnectionDraining = false;
-    sendPendingMessages();
-    sendPendingForeverSyncMessages();
+    sendQueuedMessages();
   }
 
   /**
@@ -400,7 +440,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    */
   public void sendDownstreamMessage(String messageId, String jsonRequest) {
     logger.info("Sending downstream message.");
-    syncMessages.put(messageId, jsonRequest);
+    putMessageToSyncMessages(messageId, jsonRequest);
     if (!isConnectionDraining) {
       sendDownstreamMessageInternal(messageId, jsonRequest);
     }
@@ -422,8 +462,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         try {
           backoff.errorOccured2();
         } catch (Exception e2) { // all the attempts failed
-          syncMessages.remove(messageId);
-          pendingMessages.put(messageId, jsonRequest);
+          removeMessageFromSyncMessages(messageId);
+          pendingMessages.put(messageId, Message.from(jsonRequest));
         }
       }
     }
@@ -471,8 +511,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     while (backoff.shouldRetry()) {
       try {
         connect();
-        sendPendingMessages();
-        sendPendingForeverSyncMessages();
+        sendQueuedMessages();
         backoff.doNotRetry();
       } catch (XMPPException | SmackException | IOException | InterruptedException | KeyManagementException
           | NoSuchAlgorithmException e) {
@@ -480,6 +519,14 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         backoff.errorOccured();
       }
     }
+  }
+
+  private void sendQueuedMessages() {
+    // copy the snapshots of the two lists and then try to resend them
+    final Map<String, Message> pendingMessagesToResend = new HashMap<>(pendingMessages);
+    final Map<String, Message> syncMessagesToResend = new HashMap<>(syncMessages);
+    sendQueuedPendingMessages(pendingMessagesToResend);
+    sendQueuedSyncMessages(syncMessagesToResend);
   }
 
   /*** BEGIN: Methods for the Manager ***/
@@ -525,6 +572,6 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     }
   }
 
-  /*** END: Methods for the REST entry point ***/
+  /*** END: Methods for the Manager ***/
 
 }

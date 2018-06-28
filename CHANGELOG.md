@@ -1,15 +1,22 @@
 # Changelog
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
-## [unreleased]
-**Tag**: xmpp_r1_v8
+## [xmpp_r1_v9] - unreleased
+**Tag**: 
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
 
 -------------------------------------------------------------------------------------
 
-## [xmpp_r1_v7] - 2018-05-0
+## [xmpp_r1_v8] - 2018-06-28
+
+### Modified
+- upgrade jackson to 2.9.6
+
+-------------------------------------------------------------------------------------
+
+## [xmpp_r1_v7] - 2018-05-06
 **Tag**: xmpp_r1_v7
 
 ### Modified

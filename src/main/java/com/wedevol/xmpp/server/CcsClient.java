@@ -20,6 +20,7 @@ import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.ReconnectionListener;
 import org.jivesoftware.smack.ReconnectionManager;
 import org.jivesoftware.smack.SASLAuthentication;
+import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.StanzaListener;
@@ -108,6 +109,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
     final SSLContext sslContext = SSLContext.getInstance("TLS");
     sslContext.init(null, null, new SecureRandom());
+    SmackConfiguration.DEBUG = debuggable;
 
     final XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration.builder();
     logger.info("Connecting to the server ...");
@@ -116,7 +118,6 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     config.setPort(Util.FCM_PORT);
     config.setSendPresence(false);
     config.setSecurityMode(SecurityMode.ifpossible);
-    config.setDebuggerEnabled(debuggable); // launch a window with info about packets sent and received
     config.setCompressionEnabled(true);
     config.setSocketFactory(sslContext.getSocketFactory());
     config.setCustomSSLContext(sslContext);
@@ -147,7 +148,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     xmppConn.addAsyncStanzaListener(this, stanza -> stanza.hasExtension(Util.FCM_ELEMENT_NAME, Util.FCM_NAMESPACE));
 
     // Log all outgoing packets
-    xmppConn.addStanzaInterceptor(stanza -> logger.info("Sent: {}", stanza.toXML()), ForEveryStanza.INSTANCE);
+    xmppConn.addStanzaInterceptor(stanza -> logger.info("Sent: {}", stanza.toXML(null)), ForEveryStanza.INSTANCE);
 
     // Set the ping interval
     final PingManager pingManager = PingManager.getInstanceFor(xmppConn);
@@ -211,7 +212,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   public void processStanza(Stanza packet) {
     logger.info("Processing packet in thread {} - {}", Thread.currentThread().getName(),
         Thread.currentThread().getId());
-    logger.info("Received: {}", packet.toXML());
+    logger.info("Received: {}", packet.toXML(null));
     final FcmPacketExtension fcmPacket = (FcmPacketExtension) packet.getExtension(Util.FCM_NAMESPACE);
     final String json = fcmPacket.getJson();
     Optional<Map<String, Object>> jsonMapObject = Optional.ofNullable(MessageMapper.toMapFromJsonString(json));
@@ -378,16 +379,6 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     logger.info("Reconnecting in {} ...", seconds);
   }
 
-  /**
-   * This method will be removed in Smack 4.3. Use {@link #connected(XMPPConnection)} or
-   * {@link #authenticated(XMPPConnection, boolean)} instead.
-   */
-  @Deprecated
-  @Override
-  public void reconnectionSuccessful() {
-    logger.info("Reconnection successful.");
-  }
-
   @Override
   public void connectionClosedOnError(Exception e) {
     logger.info("Connection closed on error.");
@@ -458,7 +449,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         backoff.doNotRetry();
       } catch (NotConnectedException | InterruptedException e) {
         logger.info("The packet could not be sent due to a connection problem. Backing off the packet: {}",
-            request.toXML());
+            request.toXML(null));
         try {
           backoff.errorOccured2();
         } catch (Exception e2) { // all the attempts failed
@@ -484,7 +475,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
         backoff.doNotRetry();
       } catch (NotConnectedException | InterruptedException e) {
         logger.info("The packet could not be sent due to a connection problem. Backing off the packet: {}",
-            packet.toXML());
+            packet.toXML(null));
         backoff.errorOccured();
       }
     }

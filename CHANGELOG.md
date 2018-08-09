@@ -1,11 +1,23 @@
 # Changelog
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
-## [xmpp_r1_v9] - unreleased
+## [xmpp_r1_v10] - unreleased
 **Tag**: 
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
+
+-------------------------------------------------------------------------------------
+
+## [xmpp_r1_v9] - 2018-08-08
+**Tag**: 
+
+### Modified
+- upgrade smack from 4.2.4 to 4.3.0 https://github.com/igniterealtime/Smack/wiki/Smack-4.3-Readme-and-Upgrade-Guide
+- Changes:
+	- setDebuggerEnabled deprecated (there is a factory instead)
+	- remove reconnection listeners from connection listeners because they are part of other interface
+	- change toXml() to toXml(null) (Smack had a TODO internally when they fully support java 8)
 
 -------------------------------------------------------------------------------------
 

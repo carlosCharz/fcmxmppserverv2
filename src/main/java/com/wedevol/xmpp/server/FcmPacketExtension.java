@@ -21,8 +21,8 @@ public class FcmPacketExtension implements ExtensionElement {
   }
 
   @Override
-  public String toXML() {
-    // TODO: Do we need to scape the json? StringUtils.escapeForXML(json)
+  public String toXML(String enclosingNamespace) {
+    // TODO: 1. Do we need to scape the json? StringUtils.escapeForXML(json) 2. How to use the enclosing namespace?
     return String.format("<%s xmlns=\"%s\">%s</%s>", getElementName(), getNamespace(), json, Util.FCM_ELEMENT_NAME);
   }
 

@@ -1,5 +1,5 @@
 # XMPP Connection Server for FCM (Upgrade from Smack 3.x to 4.x) + Connection Draining Implementation
-This is an upgrade of my last [FCM XMPP Connection Server](https://github.com/carlosCharz/fcmxmppserver) application. Now, this project uses the latest version at this time of the Smack library (4.2.4). _**I just added the connection draining implementation to this project. If you had some problems check my troubleshooting section!**_
+This is an upgrade of my last [FCM XMPP Connection Server](https://github.com/carlosCharz/fcmxmppserver) application. Now, this project uses the latest version at this time of the Smack library (4.3.0). _**I just added the connection draining implementation to this project. If you had some problems check my troubleshooting section!**_
 
 The new version has introduced new terminology, deprecated some older methods and enriched the library in general. The problem started when there is a no working example out there using the new version to build a XMPP CCS for FCM. In summary, the API changes from the 3.x to the 4.x version are:
 
@@ -7,6 +7,7 @@ The new version has introduced new terminology, deprecated some older methods an
 2. XMPPConnection.addPacketListener is deprecated: use either addAsyncPacketListener or addSyncPacketListener.
 3. Packet became a deprecated interface. Use the new Stanza class.
 4. The Packet Extension term is now Extension Element.
+5. Some methods of ConnectionListener that belongs to the reconnection were moved to ReconnectionListener.
   
 For more information you must read the following documentation: 
  

@@ -1,16 +1,24 @@
 # Changelog
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
-## [xmpp_r1_v10] - unreleased
-**Tag**: 
+## [xmpp_r2_v1] - unreleased
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
 
 -------------------------------------------------------------------------------------
 
+
+## [xmpp_r1_v10] - 2018-11-19
+
+### Modified
+- upgrade smack from 4.3.0 to 4.3.1 https://download.igniterealtime.org/smack/docs/4.3.1/changelog.html
+- upgrade jackson from 2.9.6 to 2.9.7 https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.9.7
+
+-------------------------------------------------------------------------------------
+
+
 ## [xmpp_r1_v9] - 2018-08-08
-**Tag**: 
 
 ### Modified
 - upgrade smack from 4.2.4 to 4.3.0 https://github.com/igniterealtime/Smack/wiki/Smack-4.3-Readme-and-Upgrade-Guide
@@ -20,6 +28,7 @@ All notable changes to the fcm xmpp server v2 project will be documented in this
 	- change toXml() to toXml(null) (Smack had a TODO internally when they fully support java 8)
 
 -------------------------------------------------------------------------------------
+
 
 ## [xmpp_r1_v8] - 2018-06-28
 

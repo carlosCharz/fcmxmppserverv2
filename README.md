@@ -1,5 +1,5 @@
 # XMPP Connection Server for FCM (Upgrade from Smack 3.x to 4.x) + Connection Draining Implementation
-This is an upgrade of my last [FCM XMPP Connection Server](https://github.com/carlosCharz/fcmxmppserver) application. Now, this project uses the latest version at this time of the Smack library (4.3.1). _**I just added the connection draining implementation to this project. If you had some problems check my troubleshooting section!**_
+This is an upgrade of my last [FCM XMPP Connection Server](https://github.com/carlosCharz/fcmxmppserver) application. Now, this project uses the latest version at this time of the Smack library (4.3.3). _**I just added the connection draining implementation to this project. If you had some problems check my troubleshooting section!**_
 
 The new version has introduced new terminology, deprecated some older methods and enriched the library in general. The problem started when there is a no working example out there using the new version to build a XMPP CCS for FCM. In summary, the API changes from the 3.x to the 4.x version are:
 
@@ -58,7 +58,7 @@ _**Any improvement or comment about the project is always welcome! As well as ot
 
 ## License
 ```javas
-Copyright 2018 Carlos Becerra
+Copyright 2019 Carlos Becerra
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

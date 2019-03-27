@@ -1,13 +1,20 @@
 # Changelog
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
-## [xmpp_r2_v1] - unreleased
+## [unreleased]
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
 
 -------------------------------------------------------------------------------------
 
+
+## [xmpp_r1_v12] - 2019-03-27
+
+### Modified
+- upgrade smack from 4.3.1 to 4.3.3 https://download.igniterealtime.org/smack/docs/latest/changelog.html
+
+-------------------------------------------------------------------------------------
 
 ## [xmpp_r1_v11] - 2019-02-02
 

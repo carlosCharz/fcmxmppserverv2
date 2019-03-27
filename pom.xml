@@ -12,7 +12,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
-		<smack.version>4.3.1</smack.version>
+		<smack.version>4.3.3</smack.version>
 		<jackson.version>2.9.8</jackson.version>
 		<logback.version>1.2.3</logback.version>
 	</properties>

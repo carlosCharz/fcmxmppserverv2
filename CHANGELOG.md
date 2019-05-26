@@ -9,6 +9,14 @@ All notable changes to the fcm xmpp server v2 project will be documented in this
 -------------------------------------------------------------------------------------
 
 
+## [xmpp_r1_v13] - 2019-05-25
+
+### Modified
+- upgrade jackson from 2.9.8 to 2.9.9 https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.9.9
+
+-------------------------------------------------------------------------------------
+
+
 ## [xmpp_r1_v12] - 2019-03-27
 
 ### Modified

@@ -6,6 +6,16 @@ All notable changes to the fcm xmpp server v2 project will be documented in this
 ### Added
 - a better solution for the connection draining (A manager class will be added)
 
+
+-------------------------------------------------------------------------------------
+
+
+## [xmpp_r1_v14] - 2019-07-03
+
+### Modified
+- Upgrade smack lib from 4.3.3 to 4.3.4 https://download.igniterealtime.org/smack/docs/latest/changelog.html
+
+
 -------------------------------------------------------------------------------------
 
 

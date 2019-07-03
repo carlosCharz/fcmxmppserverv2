@@ -4,7 +4,7 @@
 
 	<groupId>com.wedevol</groupId>
 	<artifactId>xmppserver2</artifactId>
-	<version>1.0.3</version>
+	<version>1.0.4</version>
 	<packaging>jar</packaging>
 	<name>FCM XMPP Server</name>
 
@@ -12,7 +12,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
-		<smack.version>4.3.3</smack.version>
+		<smack.version>4.3.4</smack.version>
 		<jackson.version>2.9.9</jackson.version>
 		<logback.version>1.2.3</logback.version>
 	</properties>

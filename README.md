@@ -58,7 +58,7 @@ _**Any improvement or comment about the project is always welcome! As well as ot
 
 ## License
 ```javas
-Copyright 2019 Carlos Becerra
+Copyright 2020 Carlos Becerra
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

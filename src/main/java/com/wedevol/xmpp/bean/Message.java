@@ -14,7 +14,7 @@ public class Message {
     return new Message(Util.getCurrentTimeMillis(), jsonRequest);
   }
 
-  public Message(Long timestamp, String jsonRequest) {
+  private Message(Long timestamp, String jsonRequest) {
     this.timestamp = timestamp;
     this.jsonRequest = jsonRequest;
   }

@@ -47,16 +47,16 @@ import com.wedevol.xmpp.util.MessageMapper;
 import com.wedevol.xmpp.util.Util;
 
 /**
- * Class that connects to FCM Cloud Connection Server and handles stanzas (ACK, NACK, upstream,
- * downstream). Sample Smack implementation of a client for FCM Cloud Connection Server. Most of it
- * has been taken more or less verbatim from Google's documentation: <a href=
+ * Class that connects to FCM Cloud Connection Server and handles stanzas (ACK, NACK, upstream, downstream). Sample
+ * Smack implementation of a client for FCM Cloud Connection Server. Most of it has been taken more or less verbatim
+ * from Google's documentation: <a href=
  * "https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref">https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref</a>
  * 
  * @author Charz++
  */
 public class CcsClient implements StanzaListener, ReconnectionListener, ConnectionListener, PingFailedListener {
 
-  protected static final Logger logger = LoggerFactory.getLogger(CcsClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(CcsClient.class);
 
   private XMPPTCPConnection xmppConn;
   private String apiKey = null;
@@ -178,8 +178,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   }
 
   /**
-   * Sends all the queued sync messages that occurred before 5 seconds (1000 ms) ago. With this we try
-   * to send those lost messages that we have not received ack nor nack.
+   * Sends all the queued sync messages that occurred before 5 seconds (1000 ms) ago. With this we try to send those
+   * lost messages that we have not received ack nor nack.
    */
   private void sendQueuedSyncMessages(Map<String, Message> syncMessagesToResend) {
     logger.info("Sending queued sync messages ...");
@@ -355,15 +355,14 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * 
    * API Helper methods:
    * 
-   * These are methods that implementers can use, call, or override. Help give the implementer more
-   * control/ customization.
+   * These are methods that implementers can use, call, or override. Help give the implementer more control/
+   * customization.
    * 
    * ===============================================================================================
    */
 
   /**
-   * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()}
-   * returns true
+   * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()} returns true
    */
   @Override
   public void reconnectionFailed(Exception e) {
@@ -371,8 +370,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   }
 
   /**
-   * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()}
-   * returns true
+   * Note: This method is only called if {@link ReconnectionManager#isAutomaticReconnectEnabled()} returns true
    */
   @Override
   public void reconnectingIn(int seconds) {
@@ -412,10 +410,9 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   }
 
   /**
-   * Called when a custom packet has been received by the server. By default this method just resends
-   * the packet.
+   * Called when a custom packet has been received by the server. By default this method just resends the packet.
    */
-  public void handlePacketRecieved(CcsInMessage inMessage) {
+  private void handlePacketRecieved(CcsInMessage inMessage) {
     final String messageId = Util.getUniqueMessageId();
     // TODO: it should be the user id to be retrieved from the data base
     final String to = inMessage.getDataPayload().get(Util.PAYLOAD_ATTRIBUTE_RECIPIENT);
@@ -465,7 +462,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
    * 
    * @param jsonRequest
    */
-  public void sendAck(String jsonRequest) {
+  private void sendAck(String jsonRequest) {
     logger.info("Sending ack.");
     final Stanza packet = new FcmPacketExtension(jsonRequest).toPacket();
     final BackOffStrategy backoff = new BackOffStrategy();
@@ -482,8 +479,8 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   }
 
   /**
-   * Sends a message to multiple recipients (list). Kind of like the old HTTP message with the list of
-   * regIds in the "registration_ids" field.
+   * Sends a message to multiple recipients (list). Kind of like the old HTTP message with the list of regIds in the
+   * "registration_ids" field.
    */
   public void sendBroadcast(CcsOutMessage outMessage, List<String> recipients) {
     final Map<String, Object> map = MessageMapper.mapFrom(outMessage);
@@ -496,7 +493,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
     }
   }
 
-  public synchronized void reconnect() {
+  private synchronized void reconnect() {
     logger.info("Initiating reconnection ...");
     final BackOffStrategy backoff = new BackOffStrategy(5, 1000);
     while (backoff.shouldRetry()) {

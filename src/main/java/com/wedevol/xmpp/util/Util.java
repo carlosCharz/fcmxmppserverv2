@@ -31,10 +31,10 @@ public class Util {
    * Returns a random message id to uniquely identify a message
    */
   public static String getUniqueMessageId() {
-    // TODO: replace with your own random message ID
-    final LocalDateTime now = LocalDateTime.now();
+    // TODO replace with your own random message ID
+    LocalDateTime now = LocalDateTime.now();
     final String formatted = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss", Locale.ENGLISH));
-    final UUID randomUUID = UUID.randomUUID();
+    UUID randomUUID = UUID.randomUUID();
     final String messageId =
         new StringBuilder().append("m-").append(formatted).append("-").append(randomUUID.toString()).toString();
     return messageId;

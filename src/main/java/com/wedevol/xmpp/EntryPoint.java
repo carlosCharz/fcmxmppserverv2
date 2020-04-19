@@ -22,7 +22,7 @@ import com.wedevol.xmpp.util.Util;
  */
 public class EntryPoint extends CcsClient {
 
-  protected static final Logger logger = LoggerFactory.getLogger(EntryPoint.class);
+  private static final Logger logger = LoggerFactory.getLogger(EntryPoint.class);
 
   public EntryPoint(String projectId, String apiKey, boolean debuggable, String toRegId) {
     super(projectId, apiKey, debuggable);
@@ -36,14 +36,14 @@ public class EntryPoint extends CcsClient {
 
     // Send a sample downstream message to a device
     final String messageId = Util.getUniqueMessageId();
-    final Map<String, String> dataPayload = new HashMap<String, String>();
+    Map<String, String> dataPayload = new HashMap<String, String>();
     dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
-    final CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
+    CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
     final String jsonRequest = MessageMapper.toJsonString(message);
     sendDownstreamMessage(messageId, jsonRequest);
 
     try {
-      final CountDownLatch latch = new CountDownLatch(1);
+      CountDownLatch latch = new CountDownLatch(1);
       latch.await();
     } catch (InterruptedException e) {
       logger.error("An error occurred while latch was waiting. Error: {}", e.getMessage());

@@ -11,9 +11,8 @@ import com.wedevol.xmpp.bean.CcsInMessage;
 import com.wedevol.xmpp.bean.CcsOutMessage;
 
 /**
- * Mapper for the transformation of JSON messages to attribute maps and vice versa in the XMPP
- * Server
- * 
+ * Mapper for the transformation of JSON messages to attribute maps and vice versa in the XMPP Server
+ *
  * @author Charz++
  */
 
@@ -40,7 +39,7 @@ public class MessageMapper {
    * Creates a JSON encoded ACK message for a received upstream message
    */
   public static String createJsonAck(String to, String messageId) {
-    final Map<String, Object> map = new HashMap<String, Object>();
+    final Map<String, Object> map = new HashMap<>();
     map.put("message_type", "ack");
     map.put("to", to);
     map.put("message_id", messageId);
@@ -70,7 +69,7 @@ public class MessageMapper {
    * Creates a MAP from a FCM outgoing message attributes
    */
   public static Map<String, Object> mapFrom(CcsOutMessage msg) {
-    final Map<String, Object> map = new HashMap<String, Object>();
+    final Map<String, Object> map = new HashMap<>();
     if (msg.getTo() != null) {
       map.put("to", msg.getTo());
     }
@@ -111,7 +110,7 @@ public class MessageMapper {
    * Creates a MAP from a FCM incoming message attributes
    */
   private static Map<String, Object> mapFrom(CcsInMessage msg) {
-    final Map<String, Object> map = new HashMap<String, Object>();
+    final Map<String, Object> map = new HashMap<>();
     if (msg.getFrom() != null) {
       map.put("from", msg.getFrom());
     }

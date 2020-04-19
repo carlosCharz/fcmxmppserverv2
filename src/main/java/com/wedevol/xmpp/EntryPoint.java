@@ -17,7 +17,7 @@ import com.wedevol.xmpp.util.Util;
 
 /**
  * Entry Point class for the XMPP Server
- * 
+ *
  * @author Charz++
  */
 public class EntryPoint extends CcsClient {
@@ -36,7 +36,7 @@ public class EntryPoint extends CcsClient {
 
     // Send a sample downstream message to a device
     final String messageId = Util.getUniqueMessageId();
-    Map<String, String> dataPayload = new HashMap<String, String>();
+    Map<String, String> dataPayload = new HashMap<>();
     dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
     CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
     final String jsonRequest = MessageMapper.toJsonString(message);

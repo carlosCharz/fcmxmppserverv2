@@ -51,7 +51,7 @@ import com.wedevol.xmpp.util.Util;
  * Smack implementation of a client for FCM Cloud Connection Server. Most of it has been taken more or less verbatim
  * from Google's documentation: <a href=
  * "https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref">https://firebase.google.com/docs/cloud-messaging/xmpp-server-ref</a>
- * 
+ *
  * @author Charz++
  */
 public class CcsClient implements StanzaListener, ReconnectionListener, ConnectionListener, PingFailedListener {
@@ -72,7 +72,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
   /**
    * Public constructor for the CCS Client
-   * 
+   *
    * @param projectId
    * @param apiKey
    * @param debuggable
@@ -197,8 +197,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
   }
 
   private Predicate<Entry<String, Message>> isOldSyncMessageQueued() {
-    return entry -> (entry.getValue() != null)
-        && (entry.getValue().getTimestamp() < Util.getCurrentTimeMillis() - 5000);
+    return entry -> entry.getValue() != null && entry.getValue().getTimestamp() < Util.getCurrentTimeMillis() - 5000;
   }
 
   private Comparator<Entry<String, Message>> compareTimestampsAscending() {
@@ -352,12 +351,12 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
   /**
    * ===============================================================================================
-   * 
+   *
    * API Helper methods:
-   * 
+   *
    * These are methods that implementers can use, call, or override. Help give the implementer more control/
    * customization.
-   * 
+   *
    * ===============================================================================================
    */
 
@@ -459,7 +458,7 @@ public class CcsClient implements StanzaListener, ReconnectionListener, Connecti
 
   /**
    * Sends an ACK to FCM with back off strategy
-   * 
+   *
    * @param jsonRequest
    */
   private void sendAck(String jsonRequest) {

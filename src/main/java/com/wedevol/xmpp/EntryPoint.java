@@ -22,38 +22,38 @@ import com.wedevol.xmpp.util.Util;
  */
 public class EntryPoint extends CcsClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(EntryPoint.class);
+    private static final Logger logger = LoggerFactory.getLogger(EntryPoint.class);
 
-  public EntryPoint(String projectId, String apiKey, boolean debuggable, String toRegId) {
-    super(projectId, apiKey, debuggable);
+    public EntryPoint(String projectId, String apiKey, boolean debuggable, String toRegId) {
+        super(projectId, apiKey, debuggable);
 
-    try {
-      connect();
-    } catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException | SmackException
-        | IOException e) {
-      logger.error("Error trying to connect. Error: {}", e.getMessage());
+        try {
+            connect();
+        } catch (XMPPException | InterruptedException | KeyManagementException | NoSuchAlgorithmException
+                | SmackException | IOException e) {
+            logger.error("Error trying to connect. Error: {}", e.getMessage());
+        }
+
+        // Send a sample downstream message to a device
+        final String messageId = Util.getUniqueMessageId();
+        Map<String, String> dataPayload = new HashMap<>();
+        dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
+        CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
+        final String jsonRequest = MessageMapper.toJsonString(message);
+        sendDownstreamMessage(messageId, jsonRequest);
+
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            latch.await();
+        } catch (InterruptedException e) {
+            logger.error("An error occurred while latch was waiting. Error: {}", e.getMessage());
+        }
     }
 
-    // Send a sample downstream message to a device
-    final String messageId = Util.getUniqueMessageId();
-    Map<String, String> dataPayload = new HashMap<>();
-    dataPayload.put(Util.PAYLOAD_ATTRIBUTE_MESSAGE, "This is the simple sample message");
-    CcsOutMessage message = new CcsOutMessage(toRegId, messageId, dataPayload);
-    final String jsonRequest = MessageMapper.toJsonString(message);
-    sendDownstreamMessage(messageId, jsonRequest);
-
-    try {
-      CountDownLatch latch = new CountDownLatch(1);
-      latch.await();
-    } catch (InterruptedException e) {
-      logger.error("An error occurred while latch was waiting. Error: {}", e.getMessage());
+    public static void main(String[] args) throws SmackException, IOException {
+        final String fcmProjectSenderId = args[0];
+        final String fcmServerKey = args[1];
+        final String toRegId = args[2];
+        new EntryPoint(fcmProjectSenderId, fcmServerKey, false, toRegId);
     }
-  }
-
-  public static void main(String[] args) throws SmackException, IOException {
-    final String fcmProjectSenderId = args[0];
-    final String fcmServerKey = args[1];
-    final String toRegId = args[2];
-    new EntryPoint(fcmProjectSenderId, fcmServerKey, false, toRegId);
-  }
 }

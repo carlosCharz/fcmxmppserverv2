@@ -1,10 +1,20 @@
 # Changelog
 All notable changes to the fcm xmpp server v2 project will be documented in this file, in a per release basis.
 
-## [unreleased]
+## [UNRELEASED]
 
 ### Added
 - a better solution for the connection draining (A manager class will be added)
+
+
+-------------------------------------------------------------------------------------
+
+
+## [r1_v17] - 2020-06-08
+
+### Modified
+- Upgrade jackson from 2.10.1 to 2.11.0 https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.11
+- Format code
 
 
 -------------------------------------------------------------------------------------
